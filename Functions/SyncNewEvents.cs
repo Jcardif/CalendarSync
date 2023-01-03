@@ -46,6 +46,15 @@ namespace CalendarSync.Functions
                 context.Database.Migrate();
                 context.Database.EnsureCreated();
 
+                var existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
+                if(existingCalendarEvent != null)
+                {
+                    // get response from helper method
+                    response = CreateResponse(req, HttpStatusCode.Conflict, "CalendarEvent already exists");
+
+                    return response;
+                }
+
                 context.CalendarEvents?.Add(calendarEvent);
                 context?.SaveChanges();
             }
