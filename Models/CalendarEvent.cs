@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
@@ -8,6 +9,11 @@ namespace CalendarSync.Models
     public class CalendarEvent
     {
         private string _id;
+        private string _start;
+        private string _end;
+        private string _startWithTimeZone;
+        private string _endWithTimeZone;
+
 
         [Key]
         public string? Id 
@@ -31,6 +37,63 @@ namespace CalendarSync.Models
         public DateTimeOffset EndTimeWithTimeZone { get; set; }
         public string? Subject { get; set; }
         public string? Importance { get; set; }
+
+        [NotMapped]
+        public string? Start
+        {
+            get { return _start; }
+            set
+            {
+                _start = value;
+                if (!string.IsNullOrEmpty(_start) && DateTime.TryParse(_start, out DateTime startTime))
+                {
+                    StartTime = startTime;
+                }
+            }
+        }
+
+        [NotMapped]
+        public string? End
+        {
+            get { return _end; }
+            set
+            {
+                _end = value;
+                if (!string.IsNullOrEmpty(_end) && DateTime.TryParse(_end, out DateTime endTime))
+                {
+                    EndTime = endTime;
+                }
+            }
+        }
+
+        [NotMapped]
+        public string? StartWithTimeZone
+        {
+            get { return _startWithTimeZone; }
+            set
+            {
+                _startWithTimeZone = value;
+                if (!string.IsNullOrEmpty(_startWithTimeZone) && DateTimeOffset.TryParse(_startWithTimeZone, out DateTimeOffset startTimeWithTimeZone))
+                {
+                    StartTimeWithTimeZone = startTimeWithTimeZone;
+                }
+            }
+        }
+
+        [NotMapped]
+        public string? EndWithTimeZone
+        {
+            get { return _endWithTimeZone; }
+            set
+            {
+                _endWithTimeZone = value;
+                if (!string.IsNullOrEmpty(_endWithTimeZone) && DateTimeOffset.TryParse(_endWithTimeZone, out DateTimeOffset endTimeWithTimeZone))
+                {
+                    EndTimeWithTimeZone = endTimeWithTimeZone;
+                }
+            }
+        }
+
 
         
         public string CreateHash(string input)
