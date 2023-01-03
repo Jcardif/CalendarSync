@@ -10,7 +10,7 @@ namespace CalendarSync.Models
     {
         private string _id;
         private string _start;
-        private string _end;
+        private string? _end;
         private string _startWithTimeZone;
         private string _endWithTimeZone;
 
@@ -94,6 +94,8 @@ namespace CalendarSync.Models
             }
         }
 
+        [NotMapped]
+        public string? Body { get; set; }
 
         
         public string CreateHash(string input)
@@ -105,7 +107,6 @@ namespace CalendarSync.Models
                 return hash.ToString();
             }
         }
-
 
     }
 }

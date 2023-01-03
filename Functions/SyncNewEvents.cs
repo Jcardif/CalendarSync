@@ -8,12 +8,19 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using CalendarSync.Data;
 using CalendarSync.Models;
+using CalendarSync.Services;
 
 namespace CalendarSync.Functions
 {
     public class SyncNewEvents
     {
         private readonly ILogger _logger;
+        public string ConnectionString { get; set;}
+        public string ClientId { get; set; }
+        public string ClientSecret { get; set; }
+        public string TenantId { get; set; }
+        public CalendarService CalendarService { get; set; } 
+        public string UserPrincipalName { get; set; }
 
         public SyncNewEvents(ILoggerFactory loggerFactory)
         {
@@ -21,7 +28,7 @@ namespace CalendarSync.Functions
         }
 
         [Function("SyncNewEvents")]
-        public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+        public async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
 
@@ -39,8 +46,24 @@ namespace CalendarSync.Functions
                 return response;
             }
 
+            // Get app settings
+            GetAppSettings();
+
+            // Authenticate to Azure AD and get an access token for Microsoft Graph
+            CalendarService= new CalendarService();
+            var authenticated = await CalendarService.AuthenticateAzureAdAsync(ClientId, ClientSecret, TenantId);
+
+            // Check if the token was acquired successfully
+            if(!authenticated)
+            {
+                // get response from helper method
+                response = CreateResponse(req, HttpStatusCode.Unauthorized, "Unable to authenticate to Azure AD");
+
+                return response;
+            }
+
             // Use EF Core to insert a record into the table
-            using (var context = new AppDbContext())
+            using (var context = new AppDbContext(ConnectionString))
             {
                 // Apply any pending migrations
                 context.Database.Migrate();
@@ -59,21 +82,47 @@ namespace CalendarSync.Functions
                 context?.SaveChanges();
             }
 
+            calendarEvent.Body = "#meeting";
+
+            // create event in user's calendar
+            var newEvent = await CalendarService.CreateNewEvent(calendarEvent, UserPrincipalName);
+
             // get response from helper method
             response = CreateResponse(req, HttpStatusCode.OK, "CalendarEvent added successfully");
 
             return response;
         }
 
-        private HttpResponseData CreateResponse(HttpRequestData req, HttpStatusCode statusCode, string message)
+        private HttpResponseData CreateResponse(HttpRequestData req, HttpStatusCode statusCode, string message, object data = null)
         {
             var response = req.CreateResponse(statusCode);
             // add json content type to the response
             response.Headers.Add("Content-Type", "application/json; charset=utf-8");
 
             // write the error message to the response body
-            response.WriteString(JsonConvert.SerializeObject(new { message =$"{message}"}));
+            var responseMessage = new
+            {
+                Message = message,
+                Data = data
+            };
+            response.WriteString(JsonConvert.SerializeObject(responseMessage));
             return response;
+        }
+
+        private void GetAppSettings()
+        {
+            // Get the connection string from the secrets file and key vault on azure
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            ConnectionString = config.GetConnectionString("DefaultConnection");
+            ClientId = config["AzureAd:ClientId"];
+            ClientSecret = config["AzureAd:ClientSecret"];
+            TenantId = config["AzureAd:TenantId"];
+            UserPrincipalName = config["AzureAd:UserPrincipalName"];
         }
     }
 }
