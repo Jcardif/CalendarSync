@@ -5,9 +5,9 @@ using Microsoft.Identity.Client;
 
 namespace CalendarSync.Services
 {
-    public class CalendarService
+    public class OutlookCalendarService
     {
-        public GraphServiceClient GraphClient { get;set; }
+        public GraphServiceClient GraphClient { get; set; }
 
 
         // Authenticate to Azure AD and get an access token for Microsoft Graph
@@ -34,11 +34,11 @@ namespace CalendarSync.Services
             }
 
             // Initialize the GraphServiceClient class with the access token
-             GraphClient = new GraphServiceClient(new DelegateAuthenticationProvider(
-                async (requestMessage) =>
-                {
-                    requestMessage.Headers.Authorization = new AuthenticationHeaderValue("bearer", authResult.AccessToken);
-                }));
+            GraphClient = new GraphServiceClient(new DelegateAuthenticationProvider(
+               async (requestMessage) =>
+               {
+                   requestMessage.Headers.Authorization = new AuthenticationHeaderValue("bearer", authResult.AccessToken);
+               }));
 
             return true;
         }
@@ -78,7 +78,7 @@ namespace CalendarSync.Services
         // Delete an event from the user's calendar
         public async Task DeleteEvent(string eventId)
         {
-           await GraphClient.Me.Events[eventId].Request().DeleteAsync();
+            await GraphClient.Me.Events[eventId].Request().DeleteAsync();
         }
 
         // update an event in the user's calendar

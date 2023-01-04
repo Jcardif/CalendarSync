@@ -15,11 +15,11 @@ namespace CalendarSync.Functions
     public class SyncNewEvents
     {
         private readonly ILogger _logger;
-        public string ConnectionString { get; set;}
+        public string ConnectionString { get; set; }
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
         public string TenantId { get; set; }
-        public CalendarService CalendarService { get; set; } 
+        public OutlookCalendarService CalendarService { get; set; }
         public string UserPrincipalName { get; set; }
 
         public SyncNewEvents(ILoggerFactory loggerFactory)
@@ -38,7 +38,7 @@ namespace CalendarSync.Functions
             string requestBody = new StreamReader(req.Body).ReadToEnd();
             var calendarEvent = JsonConvert.DeserializeObject<CalendarEvent>(requestBody);
 
-            if(calendarEvent is null || String.IsNullOrEmpty(calendarEvent.Id))
+            if (calendarEvent is null || String.IsNullOrEmpty(calendarEvent.Id))
             {
                 // get response from helper method
                 response = CreateResponse(req, HttpStatusCode.BadRequest, "CalendarEvent is null");
@@ -50,11 +50,11 @@ namespace CalendarSync.Functions
             GetAppSettings();
 
             // Authenticate to Azure AD and get an access token for Microsoft Graph
-            CalendarService= new CalendarService();
+            CalendarService = new OutlookCalendarService();
             var authenticated = await CalendarService.AuthenticateAzureAdAsync(ClientId, ClientSecret, TenantId);
 
             // Check if the token was acquired successfully
-            if(!authenticated)
+            if (!authenticated)
             {
                 // get response from helper method
                 response = CreateResponse(req, HttpStatusCode.Unauthorized, "Unable to authenticate to Azure AD");
@@ -70,7 +70,7 @@ namespace CalendarSync.Functions
                 context.Database.EnsureCreated();
 
                 var existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
-                if(existingCalendarEvent != null)
+                if (existingCalendarEvent != null)
                 {
                     // get response from helper method
                     response = CreateResponse(req, HttpStatusCode.Conflict, "CalendarEvent already exists");

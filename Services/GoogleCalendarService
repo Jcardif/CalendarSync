@@ -1,0 +1,8 @@
+namespace CalendarSync.Services
+{
+    public class GoogleCalendarService
+    {
+        // Authenticate to Google Calendar
+        
+    }
+}
