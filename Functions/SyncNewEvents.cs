@@ -42,12 +42,13 @@ namespace CalendarSync.Functions
 
             // Read the values for the new row from the body of the request
             string requestBody = new StreamReader(req.Body).ReadToEnd();
-            var calendarEvent = JsonConvert.DeserializeObject<CalendarEvent>(requestBody);
+            var calendarEvents = JsonConvert.DeserializeObject<List<CalendarEvent>>(requestBody);
 
-            if (calendarEvent is null || String.IsNullOrEmpty(calendarEvent.Id))
+            // check if list is null or empty
+            if (calendarEvents is null || calendarEvents.Count == 0)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.BadRequest, "CalendarEvent is null");
+                response = CreateResponse(req, HttpStatusCode.BadRequest, "No events were passed");
 
                 return response;
             }
@@ -90,54 +91,63 @@ namespace CalendarSync.Functions
                 return response;
             }
 
-            // Use EF Core to insert a record into the table & Apply any pending migrations
-            using (var context = new AppDbContext())
-            {
-                context.Database.Migrate();
-                context.Database.EnsureCreated();
+            // Use EF Core to insert a record into the table & Apply any pending migrationn
+            var context = new AppDbContext();
+        
+            context.Database.Migrate();
+            context.Database.EnsureCreated();
 
+            List<Object> cEvents = new List<Object>();
+
+            foreach(var calendarEvent in calendarEvents)
+            {
                 var existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
                 if (existingCalendarEvent != null)
                 {
-                    // get response from helper method
-                    response = CreateResponse(req, HttpStatusCode.Conflict, "CalendarEvent already exists");
-
-                    return response;
+                    cEvents.Add(new
+                    {
+                        calendarEvent=existingCalendarEvent,
+                        message = "CalendarEvent already exists"
+                    });
+                    continue;
                 }
 
                 context.CalendarEvents?.Add(calendarEvent);
                 context?.SaveChanges();
-            }
 
-            calendarEvent.Body = "#meeting";
+                calendarEvent.Body = "#meeting";
 
-            // create event in user's calendar
-            var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, CalendarId);
+                // create event in user's calendar
+                var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, CalendarId);
 
-            // check if event was created successfully
-            if (newEvent is null)
-            {
-                // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.InternalServerError, "Unable to create event in user's calendar");
+                // check if event was created successfully
+                if (newEvent is null)
+                {
+                    cEvents.Add(new
+                    {
+                        calendarEvent=calendarEvent,
+                        message = "CalendarEvent was not created in Google Calendar"
+                    });
+                }
 
-                return response;
-            }
-
-            // update database with google calendar event id
-            using (var context = new AppDbContext())
-            {
-                var existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
+                // update database with google calendar event id
+                existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
                 if (existingCalendarEvent != null)
                 {
                     existingCalendarEvent.PersonalAccEventId = newEvent.Id;
                     context?.SaveChanges();
                 }
 
+                cEvents.Add(new
+                {
+                    calendarEvent=existingCalendarEvent,
+                    message = "CalendarEvent created"
+                });
 
-                // return the new event
-                response = CreateResponse(req, HttpStatusCode.OK, "CalendarEvent created", existingCalendarEvent);
             }
 
+            // return the new event
+            response = CreateResponse(req, HttpStatusCode.OK, "Succefully Excecuted", cEvents);
             return response;
         }
 
