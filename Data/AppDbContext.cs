@@ -25,7 +25,7 @@ namespace CalendarSync.Data
                 var config = new ConfigurationBuilder()
                     .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                     .AddEnvironmentVariables()
-                    .Build();
+                    .Build()
 
                 optionsBuilder.UseSqlServer(config.GetConnectionString("DefaultConnection"));
             }
