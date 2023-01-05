@@ -1,3 +1,4 @@
+using System.Text;
 using CalendarSync.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
@@ -7,7 +8,7 @@ using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.Services.AppAuthentication;
 
-namespace CalendarSync.Services
+namespace CalendarSync.Services.GoogleCloudConsole
 {
     public class GoogleCalendarService
     {
@@ -16,7 +17,7 @@ namespace CalendarSync.Services
 
 
         // Get the private key file from azure vault
-        private async Task<byte[]> GetPrivateKeyFileAsync(string keyVaultUrl, string secretName)
+        private async Task<string> GetPrivateKeyFileAsync(string keyVaultUrl, string secretName)
         {
             // Authenticate the request using a service principal or a managed identity
             var azureServiceTokenProvider = new AzureServiceTokenProvider();
@@ -29,28 +30,28 @@ namespace CalendarSync.Services
 
             // Get the secret value
             SecretBundle secret = await keyVaultClient.GetSecretAsync(keyVaultUrl, secretName);
-            byte[] keyFileBytes = Convert.FromBase64String(secret.Value);
 
-            return keyFileBytes;
+            return secret.Value;
         }
 
         // Authenticate to Google Cloud and get an access token for Google Calendar
-        public async Task<CalendarService?> AuthenticateGoogleCloudAsync(string keyVaultUrl, string secretName, string serviceAccountEmail)
+        public async Task<CalendarService?> AuthenticateGoogleCloudAsync(string keyVaultUrl, string secretName)
         {
             // Get the private key file from azure vault
-            byte[] keyFileBytes = await GetPrivateKeyFileAsync(keyVaultUrl, secretName);
+            var privateKeyFile = await GetPrivateKeyFileAsync(keyVaultUrl, secretName);
 
             // Use the Google .NET Client Library to make the API request
             string[] scopes = { CalendarService.Scope.Calendar };
 
-            var credential = GoogleCredential.FromStream(new MemoryStream(keyFileBytes))
+            var credential = GoogleCredential.FromJson(privateKeyFile)
                 .CreateScoped(scopes);
+
 
             // Create the Calendar service using the service account credential
             CalendarService = new CalendarService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
-                ApplicationName = "Calendar API Sample",
+                ApplicationName = "CalendarSyncServcice",
             });
 
             // if the credential is null, the authentication failed
@@ -59,7 +60,7 @@ namespace CalendarSync.Services
         }
 
         // Add a new event to the user's calendar
-        public Event? CreateNewEvent(CalendarEvent calendarEvent)
+        public async Task<Event?> CreateNewEventAsync(CalendarEvent calendarEvent, string calendarId)
         {
             // Create a new event
             var newEvent = new Event
@@ -85,9 +86,9 @@ namespace CalendarSync.Services
                 return null;
 
             // Insert the new event into the user's calendar
-            var calendar = CalendarService.Calendars.Get("primary").Execute();
-            EventsResource.InsertRequest request = CalendarService.Events.Insert(newEvent, calendar.Id);
-            Event createdEvent = request.Execute();
+            var calendar = CalendarService.Calendars.Get(calendarId).Execute();
+            var request = CalendarService.Events.Insert(newEvent, calendar.Id);
+            var createdEvent = await request.ExecuteAsync();
 
             // return the created event
             return createdEvent;

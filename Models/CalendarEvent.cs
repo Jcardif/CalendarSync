@@ -8,11 +8,11 @@ namespace CalendarSync.Models
 {
     public class CalendarEvent
     {
-        private string _id;
-        private string _start;
+        private string? _id;
+        private string? _start;
         private string? _end;
-        private string _startWithTimeZone;
-        private string _endWithTimeZone;
+        private string? _startWithTimeZone;
+        private string? _endWithTimeZone;
 
 
         [Key]
@@ -29,7 +29,9 @@ namespace CalendarSync.Models
                 _id = CreateHash($"{Subject}{WorkAccEventId}{StartTime}{EndTime}");
              }
         }
-        public string WorkAccEventId { get; set; }
+
+        [Required]
+        public string? WorkAccEventId { get; set; }
         public string? PersonalAccEventId { get; set; }
         public DateTime StartTime { get; set; }
         public DateTimeOffset StartTimeWithTimeZone { get; set; }

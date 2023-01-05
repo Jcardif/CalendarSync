@@ -17,7 +17,7 @@ namespace CalendarSync.Migrations
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     WorkAccEventId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PersonalAccEventId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PersonalAccEventId = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     StartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
                     StartTimeWithTimeZone = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     EndTime = table.Column<DateTime>(type: "datetime2", nullable: false),

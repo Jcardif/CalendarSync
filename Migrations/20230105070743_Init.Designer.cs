@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CalendarSync.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20230102233830_Null Personl Acct Id")]
-    partial class NullPersonlAcctId
+    [Migration("20230105070743_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

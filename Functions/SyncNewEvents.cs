@@ -8,19 +8,25 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using CalendarSync.Data;
 using CalendarSync.Models;
-using CalendarSync.Services;
+using CalendarSync.Service.AzureAD;
+using CalendarSync.Services.GoogleCloudConsole;
 
 namespace CalendarSync.Functions
 {
     public class SyncNewEvents
     {
         private readonly ILogger _logger;
-        public string ConnectionString { get; set; }
-        public string ClientId { get; set; }
-        public string ClientSecret { get; set; }
-        public string TenantId { get; set; }
-        public OutlookCalendarService CalendarService { get; set; }
-        public string UserPrincipalName { get; set; }
+
+        public string? ConnectionString { get; set; }
+        public string? ClientId { get; set; }
+        public string? ClientSecret { get; set; }
+        public string? TenantId { get; set; }
+        public string? KeyVaultSecretName { get; set; }
+        public string? KeyVaultUri { get; set; }
+        public OutlookCalendarService? OutlookCalendarService { get; set; }
+        public GoogleCalendarService? GoogleCalendarService { get; set; }
+        public string? CalendarId { get; set; }
+        public string? UserPrincipalName { get; set; }
 
         public SyncNewEvents(ILoggerFactory loggerFactory)
         {
@@ -49,9 +55,18 @@ namespace CalendarSync.Functions
             // Get app settings
             GetAppSettings();
 
+            // confilrm that the app settings were retrieved
+            if (String.IsNullOrEmpty(ConnectionString) || String.IsNullOrEmpty(ClientId) || String.IsNullOrEmpty(ClientSecret) || String.IsNullOrEmpty(TenantId) || String.IsNullOrEmpty(KeyVaultSecretName) || String.IsNullOrEmpty(KeyVaultUri) || String.IsNullOrEmpty(CalendarId) || String.IsNullOrEmpty(UserPrincipalName))
+            {
+                // get response from helper method
+                response = CreateResponse(req, HttpStatusCode.BadRequest, "App settings are missing");
+
+                return response;
+            }
+
             // Authenticate to Azure AD and get an access token for Microsoft Graph
-            CalendarService = new OutlookCalendarService();
-            var authenticated = await CalendarService.AuthenticateAzureAdAsync(ClientId, ClientSecret, TenantId);
+            OutlookCalendarService = new OutlookCalendarService();
+            var authenticated = await OutlookCalendarService.AuthenticateAzureAdAsync(ClientId, ClientSecret, TenantId);
 
             // Check if the token was acquired successfully
             if (!authenticated)
@@ -62,10 +77,22 @@ namespace CalendarSync.Functions
                 return response;
             }
 
-            // Use EF Core to insert a record into the table
-            using (var context = new AppDbContext(ConnectionString))
+            // Authenticate to Google Cloud Console and get an access token for Google Calendar
+            GoogleCalendarService = new GoogleCalendarService();
+            var googleCalendarService = await GoogleCalendarService.AuthenticateGoogleCloudAsync(KeyVaultUri, KeyVaultSecretName);
+
+            // Check if the token was acquired successfully
+            if (googleCalendarService is null)
             {
-                // Apply any pending migrations
+                // get response from helper method
+                response = CreateResponse(req, HttpStatusCode.Unauthorized, "Unable to authenticate to Google Cloud Console");
+
+                return response;
+            }
+
+            // Use EF Core to insert a record into the table & Apply any pending migrations
+            using (var context = new AppDbContext())
+            {
                 context.Database.Migrate();
                 context.Database.EnsureCreated();
 
@@ -85,15 +112,36 @@ namespace CalendarSync.Functions
             calendarEvent.Body = "#meeting";
 
             // create event in user's calendar
-            var newEvent = await CalendarService.CreateNewEvent(calendarEvent, UserPrincipalName);
+            var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, CalendarId);
 
-            // get response from helper method
-            response = CreateResponse(req, HttpStatusCode.OK, "CalendarEvent added successfully");
+            // check if event was created successfully
+            if (newEvent is null)
+            {
+                // get response from helper method
+                response = CreateResponse(req, HttpStatusCode.InternalServerError, "Unable to create event in user's calendar");
+
+                return response;
+            }
+
+            // update database with google calendar event id
+            using (var context = new AppDbContext())
+            {
+                var existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
+                if (existingCalendarEvent != null)
+                {
+                    existingCalendarEvent.PersonalAccEventId = newEvent.Id;
+                    context?.SaveChanges();
+                }
+
+
+                // return the new event
+                response = CreateResponse(req, HttpStatusCode.OK, "CalendarEvent created", existingCalendarEvent);
+            }
 
             return response;
         }
 
-        private HttpResponseData CreateResponse(HttpRequestData req, HttpStatusCode statusCode, string message, object data = null)
+        private HttpResponseData CreateResponse(HttpRequestData req, HttpStatusCode statusCode, string message, object? data = null)
         {
             var response = req.CreateResponse(statusCode);
             // add json content type to the response
@@ -119,10 +167,14 @@ namespace CalendarSync.Functions
                 .Build();
 
             ConnectionString = config.GetConnectionString("DefaultConnection");
+
             ClientId = config["AzureAd:ClientId"];
             ClientSecret = config["AzureAd:ClientSecret"];
             TenantId = config["AzureAd:TenantId"];
             UserPrincipalName = config["AzureAd:UserPrincipalName"];
+            KeyVaultUri= config["AzureKeyVault:KeyVaultUrl"];
+            KeyVaultSecretName = config["AzureKeyVault:SecretName"];
+            CalendarId = config["GoogleCloudConsole:CalendarId"];
         }
     }
 }
