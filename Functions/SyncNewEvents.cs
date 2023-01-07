@@ -16,6 +16,7 @@ namespace CalendarSync.Functions
     public class SyncNewEvents
     {
         private readonly ILogger _logger;
+        private List<CalendarEvent>? calendarEvents;
 
         public string? ConnectionString { get; set; }
         public string? ClientId { get; set; }
@@ -42,7 +43,19 @@ namespace CalendarSync.Functions
 
             // Read the values for the new row from the body of the request
             string requestBody = new StreamReader(req.Body).ReadToEnd();
-            var calendarEvents = JsonConvert.DeserializeObject<List<CalendarEvent>>(requestBody);
+
+            try
+            {
+
+                calendarEvents = JsonConvert.DeserializeObject<List<CalendarEvent>>(requestBody);
+            }
+            catch (Exception ex)
+            {
+                // get response from helper method
+                response = CreateResponse(req, HttpStatusCode.BadRequest, ex.Message);
+
+                return response;
+            }
 
             // check if list is null or empty
             if (calendarEvents is null || calendarEvents.Count == 0)
@@ -101,7 +114,7 @@ namespace CalendarSync.Functions
 
             foreach(var calendarEvent in calendarEvents)
             {
-                var existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
+                var existingCalendarEvent = context?.CalendarEvents?.Find(calendarEvent.Id);
                 if (existingCalendarEvent != null)
                 {
                     cEvents.Add(new
@@ -112,7 +125,7 @@ namespace CalendarSync.Functions
                     continue;
                 }
 
-                context.CalendarEvents?.Add(calendarEvent);
+                context?.CalendarEvents?.Add(calendarEvent);
                 context?.SaveChanges();
 
                 calendarEvent.Body = "#meeting";
@@ -128,10 +141,12 @@ namespace CalendarSync.Functions
                         calendarEvent=calendarEvent,
                         message = "CalendarEvent was not created in Google Calendar"
                     });
+
+                    continue;
                 }
 
                 // update database with google calendar event id
-                existingCalendarEvent = context.CalendarEvents?.Find(calendarEvent.Id);
+                existingCalendarEvent = context?.CalendarEvents?.Find(calendarEvent.Id);
                 if (existingCalendarEvent != null)
                 {
                     existingCalendarEvent.PersonalAccEventId = newEvent.Id;
@@ -141,6 +156,7 @@ namespace CalendarSync.Functions
                 cEvents.Add(new
                 {
                     calendarEvent=existingCalendarEvent,
+                    googleCalendarEvent=newEvent,
                     message = "CalendarEvent created"
                 });
 

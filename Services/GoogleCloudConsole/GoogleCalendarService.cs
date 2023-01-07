@@ -95,14 +95,14 @@ namespace CalendarSync.Services.GoogleCloudConsole
         }
 
         // Delete an event from the user's calendar
-        public void DeleteEvent(string eventId)
+        public async Task DeleteEvent(string eventId, string calendarId)
         {
             // return if calendar service is null
             if (CalendarService is null)
                 return;
 
             // Delete the event from the user's calendar
-            CalendarService.Events.Delete("primary", eventId).Execute();
+            var request = await CalendarService.Events.Delete(calendarId, eventId).ExecuteAsync();
         }
 
         // Update an event in the user's calendar
