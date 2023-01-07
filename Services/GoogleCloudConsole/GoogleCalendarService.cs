@@ -59,6 +59,14 @@ namespace CalendarSync.Services.GoogleCloudConsole
 
         }
 
+        // Convert to user calendar Timezone
+        private DateTimeOffset ConvertToUserCalendarTimezone(Calendar calendar, DateTimeOffset timeOffsetToConvert, TimeZoneInfo timeZoneInfo)
+        {
+            var calendarTimezoneInfo = TimeZoneInfo.FindSystemTimeZoneById(calendar.TimeZone);
+
+            return TimeZoneInfo.ConvertTime(timeOffsetToConvert, calendarTimezoneInfo);
+        }
+
         // Add a new event to the user's calendar
         public async Task<Event?> CreateNewEventAsync(CalendarEvent calendarEvent, string calendarId)
         {
@@ -68,23 +76,18 @@ namespace CalendarSync.Services.GoogleCloudConsole
 
             // Insert the new event into the user's calendar
             var calendar = CalendarService.Calendars.Get(calendarId).Execute();
-
-            var calendarTimezoneInfo = TimeZoneInfo.FindSystemTimeZoneById(calendar.TimeZone);
-
-            var newStartTime = TimeZoneInfo.ConvertTime(calendarEvent.StartTimeWithTimeZone, calendarTimezoneInfo);
-            var newEndTime = TimeZoneInfo.ConvertTime(calendarEvent.EndTimeWithTimeZone, calendarTimezoneInfo);
-
+        
             // Create a new event
             var newEvent = new Event
             {
                 Summary = calendarEvent.Subject,
                 Start = new EventDateTime
                 {
-                    DateTime = newStartTime.DateTime
+                    DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.StartTimeWithTimeZone, TimeZoneInfo.Local).DateTime
                 },
                 End = new EventDateTime
                 {
-                    DateTime = newEndTime.DateTime
+                    DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.EndTimeWithTimeZone, TimeZoneInfo.Local).DateTime
                 },
                 Description = calendarEvent.Body,
             };
@@ -108,14 +111,17 @@ namespace CalendarSync.Services.GoogleCloudConsole
         }
 
         // Update an event in the user's calendar
-        public Event? UpdateEvent(CalendarEvent calendarEvent)
+        public async Task<Event?> UpdateEventAsync(CalendarEvent calendarEvent, string calendarId)
         {
             // return if calendar service is null
             if (CalendarService is null)
                 return null;
 
+            // Insert the new event into the user's calendar
+            var calendar = CalendarService.Calendars.Get(calendarId).Execute();
+
             // Get the event from the user's calendar
-            var eventToUpdate = CalendarService.Events.Get("primary", calendarEvent.PersonalAccEventId).Execute();
+            var eventToUpdate = CalendarService.Events.Get(calendarId, calendarEvent.PersonalAccEventId).Execute();
 
             // return if the event is null
             if (eventToUpdate is null)
@@ -125,21 +131,17 @@ namespace CalendarSync.Services.GoogleCloudConsole
             eventToUpdate.Summary = calendarEvent.Subject;
             eventToUpdate.Start = new EventDateTime
             {
-                DateTime = calendarEvent.StartTime,
-                // get timezone form date offest
-                TimeZone = TimeZoneInfo.Local.GetUtcOffset(calendarEvent.StartTimeWithTimeZone).ToString()
+                DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.StartTimeWithTimeZone, TimeZoneInfo.Local).DateTime
             };
             eventToUpdate.End = new EventDateTime
             {
-                DateTime = calendarEvent.EndTime,
-                // get timezone form date offest
-                TimeZone = TimeZoneInfo.Local.GetUtcOffset(calendarEvent.EndTimeWithTimeZone).ToString()
+                DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.EndTimeWithTimeZone, TimeZoneInfo.Local).DateTime
             };
             eventToUpdate.Description = calendarEvent.Body;
 
             // Update the event in the user's calendar
-            EventsResource.UpdateRequest request = CalendarService.Events.Update(eventToUpdate, "primary", calendarEvent.Id);
-            Event updatedEvent = request.Execute();
+            EventsResource.UpdateRequest request = CalendarService.Events.Update(eventToUpdate, calendarId, eventToUpdate.Id);
+            Event updatedEvent = await request.ExecuteAsync();
 
             // return the updated event
             return updatedEvent;
