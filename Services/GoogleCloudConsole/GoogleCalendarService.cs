@@ -62,31 +62,33 @@ namespace CalendarSync.Services.GoogleCloudConsole
         // Add a new event to the user's calendar
         public async Task<Event?> CreateNewEventAsync(CalendarEvent calendarEvent, string calendarId)
         {
+            // return if calendar service is null
+            if (CalendarService is null)
+                return null;
+
+            // Insert the new event into the user's calendar
+            var calendar = CalendarService.Calendars.Get(calendarId).Execute();
+
+            var calendarTimezoneInfo = TimeZoneInfo.FindSystemTimeZoneById(calendar.TimeZone);
+
+            var newStartTime = TimeZoneInfo.ConvertTime(calendarEvent.StartTimeWithTimeZone, calendarTimezoneInfo);
+            var newEndTime = TimeZoneInfo.ConvertTime(calendarEvent.EndTimeWithTimeZone, calendarTimezoneInfo);
+
             // Create a new event
             var newEvent = new Event
             {
                 Summary = calendarEvent.Subject,
                 Start = new EventDateTime
                 {
-                    DateTime = calendarEvent.StartTime,
-                    // get timezone form date offest
-                    TimeZone = TimeZoneInfo.Local.GetUtcOffset(calendarEvent.StartTimeWithTimeZone).ToString()
+                    DateTime = newStartTime.DateTime
                 },
                 End = new EventDateTime
                 {
-                    DateTime = calendarEvent.EndTime,
-                    // get timezone form date offest
-                    TimeZone = TimeZoneInfo.Local.GetUtcOffset(calendarEvent.EndTimeWithTimeZone).ToString()
+                    DateTime = newEndTime.DateTime
                 },
                 Description = calendarEvent.Body,
             };
             
-            // return if calendar service is null
-            if(CalendarService is null)
-                return null;
-
-            // Insert the new event into the user's calendar
-            var calendar = CalendarService.Calendars.Get(calendarId).Execute();
             var request = CalendarService.Events.Insert(newEvent, calendar.Id);
             var createdEvent = await request.ExecuteAsync();
 

@@ -119,8 +119,8 @@ namespace CalendarSync.Functions
                 {
                     cEvents.Add(new
                     {
-                        calendarEvent=existingCalendarEvent,
-                        message = "CalendarEvent already exists"
+                        id = calendarEvent.Id,
+                        message = "Calendar Event already exists"
                     });
                     continue;
                 }
@@ -139,7 +139,7 @@ namespace CalendarSync.Functions
                     cEvents.Add(new
                     {
                         calendarEvent=calendarEvent,
-                        message = "CalendarEvent was not created in Google Calendar"
+                        message = "Calendar Event was not created in Google Calendar"
                     });
 
                     continue;
