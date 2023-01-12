@@ -7,6 +7,8 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using CalendarSync.Helpers;
+using static CalendarSync.Helpers.Helpers;
 
 namespace CalendarSync.Functions
 {
@@ -19,10 +21,7 @@ namespace CalendarSync.Functions
             _logger = loggerFactory.CreateLogger<DeleteCalendarEvent>();
         }
 
-        public string? ConnectionString { get; private set; }
-        public string? KeyVaultUri { get; private set; }
-        public string? KeyVaultSecretName { get; private set; }
-        public string? CalendarId { get; private set; }
+        public AppSettings MyAppSettings {get; set;}
         public GoogleCalendarService? GoogleCalendarService { get; private set; }
         
 
@@ -48,10 +47,14 @@ namespace CalendarSync.Functions
             }
 
             // Get app settings
-            GetAppSettings();
+            MyAppSettings =  GetAppSettings();
 
             // confilrm that the app settings were retrieved
-            if (String.IsNullOrEmpty(ConnectionString) || String.IsNullOrEmpty(KeyVaultUri) || String.IsNullOrEmpty(KeyVaultSecretName) || String.IsNullOrEmpty(CalendarId))
+            if (MyAppSettings is null
+                || String.IsNullOrEmpty(MyAppSettings.ConnectionString)
+                || String.IsNullOrEmpty(MyAppSettings.KeyVaultUri)
+                || String.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName)
+                || String.IsNullOrEmpty(MyAppSettings.CalendarId))
             {
                 // get response from helper method
                 response = CreateResponse(req, HttpStatusCode.InternalServerError, "App settings were not retrieved");
@@ -61,7 +64,7 @@ namespace CalendarSync.Functions
 
             // Authenticate to Google Cloud Console and get an access token for Google Calendar
             GoogleCalendarService = new GoogleCalendarService();
-            var googleCalendarService = await GoogleCalendarService.AuthenticateGoogleCloudAsync(KeyVaultUri, KeyVaultSecretName);
+            var googleCalendarService = await GoogleCalendarService.AuthenticateGoogleCloudAsync(MyAppSettings.KeyVaultUri, MyAppSettings.KeyVaultSecretName);
 
             // Check if the token was acquired successfully
             if (googleCalendarService is null)
@@ -87,7 +90,7 @@ namespace CalendarSync.Functions
             }
 
             // delete the calendar event from google calendar
-            await GoogleCalendarService.DeleteEvent(calendarEvent.PersonalAccEventId, CalendarId);
+            await GoogleCalendarService.DeleteEvent(calendarEvent.PersonalAccEventId, MyAppSettings.CalendarId);
 
             // delete the calendar event from the database
             context?.CalendarEvents?.Remove(calendarEvent);
