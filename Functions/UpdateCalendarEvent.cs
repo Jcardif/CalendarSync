@@ -45,7 +45,7 @@ namespace CalendarSync.Functions
             var calendarEvent = JsonConvert.DeserializeObject<CalendarEvent>(requestBody);
 
             // check if valid calendar event has been passed
-            if (calendarEvent is null || string.IsNullOrEmpty(calendarEvent.PersonalAccEventId))
+            if (calendarEvent is null || string.IsNullOrEmpty(calendarEvent.WorkAccEventId))
             {
                 // get response from helper method
                 response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No valid calendar event was passed");
