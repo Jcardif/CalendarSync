@@ -61,10 +61,19 @@ Enable the Google Calendar API for your project. To do this, click the "Enable A
 
 - Go to the [Azure portal](https://portal.azure.com/) and create a new Key Vault or select an existing one.
 
-- Run [the Script](/Scripts/vault-save-key-file.sh) to save the downladed Private key file to azure vault. Uodate the script variables with values from azure.
+- Run [the Script](/src/Scripts/vault-save-key-file.sh) to save the downloaded Private key file to azure vault. Update the script variables with values from azure.
 
 # Configuring Azure Functions &amp; Managed Identity to access Key Vault
 - After publishing the Azure Function App to Azure we'll need to authenticate it with the Key Vault using system-assigned managed identity.
+- On the [Azure Portal](http://portal.azure.com/) go the Functions App, select Identity from the left navigation, toggle the **status** field then save.
+- We now have created the Managed Identity, but it has not been granted access in the Key Vault yet. Open the key vault on the Azure portal.
+- Select **access policies** and then **Create**. select the following permissions **-Get** and **List** for **key permissions, secret permissions and certificate permissions** inputs.
+- Select Principal and search for the Azure Function App then add gitthe access policy.
+
+
+![](/docs/configure-managed-identity.mp4)
+
+- Alternatively run [the script](/src/Scripts/create-system-managed-identity.sh) to achieve the same.
 
 
 
