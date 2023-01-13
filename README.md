@@ -70,8 +70,7 @@ Enable the Google Calendar API for your project. To do this, click the "Enable A
 - Select **access policies** and then **Create**. select the following permissions **-Get** and **List** for **key permissions, secret permissions and certificate permissions** inputs.
 - Select Principal and search for the Azure Function App then add gitthe access policy.
 
-
-![](/docs/configure-managed-identity.mp4)
+https://user-images.githubusercontent.com/29174946/212390348-482f7dbc-00e4-4ea8-8693-a9a43c4dd038.mp4
 
 - Alternatively run [the script](/src/Scripts/create-system-managed-identity.sh) to achieve the same.
 
