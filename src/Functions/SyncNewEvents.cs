@@ -66,7 +66,7 @@ namespace CalendarSync.Functions
             // Get app settings
             MyAppSettings = GetAppSettings();
 
-            // confilrm that the app settings were retrieved
+            // confirm that the app settings were retrieved
             if (MyAppSettings is null
                 || String.IsNullOrEmpty(MyAppSettings.ConnectionString)
                 || String.IsNullOrEmpty(MyAppSettings.ClientId)
@@ -133,7 +133,7 @@ namespace CalendarSync.Functions
                 context?.CalendarEvents?.Add(calendarEvent);
                 context?.SaveChanges();
 
-                calendarEvent.Body = "#meeting";
+                calendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "focustime" : "#meeting";
 
                 // create event in user's calendar
                 var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, MyAppSettings.CalendarId);
@@ -168,7 +168,7 @@ namespace CalendarSync.Functions
             }
 
             // return the new event
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Succefully Excecuted", cEvents);
+            response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Successfully Executed", cEvents);
             return response;
         }
     }
