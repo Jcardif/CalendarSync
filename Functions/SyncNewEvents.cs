@@ -12,6 +12,7 @@ using CalendarSync.Service.AzureAD;
 using CalendarSync.Services.GoogleCloudConsole;
 using static CalendarSync.Helpers.Helpers;
 using CalendarSync.Helpers;
+using static CalendarSync.Helpers.Extensions;
 
 namespace CalendarSync.Functions
 {
@@ -48,7 +49,7 @@ namespace CalendarSync.Functions
             catch (Exception ex)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.BadRequest, ex.Message);
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, ex.Message);
 
                 return response;
             }
@@ -57,7 +58,7 @@ namespace CalendarSync.Functions
             if (calendarEvents is null || calendarEvents.Count == 0)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.BadRequest, "No events were passed");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No events were passed");
 
                 return response;
             }
@@ -66,7 +67,8 @@ namespace CalendarSync.Functions
             MyAppSettings = GetAppSettings();
 
             // confilrm that the app settings were retrieved
-            if (String.IsNullOrEmpty(MyAppSettings.ConnectionString)
+            if (MyAppSettings is null
+                || String.IsNullOrEmpty(MyAppSettings.ConnectionString)
                 || String.IsNullOrEmpty(MyAppSettings.ClientId)
                 || String.IsNullOrEmpty(MyAppSettings.ClientSecret)
                 || String.IsNullOrEmpty(MyAppSettings.TenantId)
@@ -76,7 +78,7 @@ namespace CalendarSync.Functions
                 || String.IsNullOrEmpty(MyAppSettings.UserPrincipalName))
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.BadRequest, "App settings are missing");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "App settings are missing");
 
                 return response;
             }
@@ -89,7 +91,7 @@ namespace CalendarSync.Functions
             if (!authenticated)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.Unauthorized, "Unable to authenticate to Azure AD");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized, "Unable to authenticate to Azure AD");
 
                 return response;
             }
@@ -102,7 +104,7 @@ namespace CalendarSync.Functions
             if (googleCalendarService is null)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.Unauthorized, "Unable to authenticate to Google Cloud Console");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized, "Unable to authenticate to Google Cloud Console");
 
                 return response;
             }
@@ -166,23 +168,7 @@ namespace CalendarSync.Functions
             }
 
             // return the new event
-            response = CreateResponse(req, HttpStatusCode.OK, "Succefully Excecuted", cEvents);
-            return response;
-        }
-
-        private HttpResponseData CreateResponse(HttpRequestData req, HttpStatusCode statusCode, string message, object? data = null)
-        {
-            var response = req.CreateResponse(statusCode);
-            // add json content type to the response
-            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-
-            // write the error message to the response body
-            var responseMessage = new
-            {
-                Message = message,
-                Data = data
-            };
-            response.WriteString(JsonConvert.SerializeObject(responseMessage));
+            response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Succefully Excecuted", cEvents);
             return response;
         }
     }

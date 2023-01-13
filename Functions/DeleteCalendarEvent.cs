@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using CalendarSync.Helpers;
 using static CalendarSync.Helpers.Helpers;
+using static CalendarSync.Helpers.Extensions;
 
 namespace CalendarSync.Functions
 {
@@ -21,9 +22,9 @@ namespace CalendarSync.Functions
             _logger = loggerFactory.CreateLogger<DeleteCalendarEvent>();
         }
 
-        public AppSettings MyAppSettings {get; set;}
+        public AppSettings? MyAppSettings { get; set; }
         public GoogleCalendarService? GoogleCalendarService { get; private set; }
-        
+
 
         [Function("DeleteCalendarEvent")]
         public async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
@@ -41,13 +42,13 @@ namespace CalendarSync.Functions
             if (String.IsNullOrEmpty(workAccEventId))
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.BadRequest, "No event id was passed");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No event id was passed");
 
                 return response;
             }
 
             // Get app settings
-            MyAppSettings =  GetAppSettings();
+            MyAppSettings = GetAppSettings();
 
             // confilrm that the app settings were retrieved
             if (MyAppSettings is null
@@ -57,7 +58,7 @@ namespace CalendarSync.Functions
                 || String.IsNullOrEmpty(MyAppSettings.CalendarId))
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.InternalServerError, "App settings were not retrieved");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.InternalServerError, "App settings were not retrieved");
 
                 return response;
             }
@@ -70,7 +71,7 @@ namespace CalendarSync.Functions
             if (googleCalendarService is null)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.Unauthorized, "Unable to authenticate to Google Cloud Console");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized, "Unable to authenticate to Google Cloud Console");
 
                 return response;
             }
@@ -84,7 +85,7 @@ namespace CalendarSync.Functions
             if (calendarEvent == null || calendarEvent.PersonalAccEventId == null)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.NotFound, "Event not found", workAccEventId);
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.NotFound, "Event not found", workAccEventId);
 
                 return response;
             }
@@ -97,26 +98,12 @@ namespace CalendarSync.Functions
             context?.SaveChanges();
 
 
-            response= CreateResponse(req, HttpStatusCode.OK, "Event deleted", true);
+            response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Event deleted", true);
 
             return response;
         }
 
-        private HttpResponseData CreateResponse(HttpRequestData req, HttpStatusCode statusCode, string message, object? data = null)
-        {
-            var response = req.CreateResponse(statusCode);
-            // add json content type to the response
-            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
 
-            // write the error message to the response body
-            var responseMessage = new
-            {
-                Message = message,
-                Data = data
-            };
-            response.WriteString(JsonConvert.SerializeObject(responseMessage));
-            return response;
-        }
 
 
     }

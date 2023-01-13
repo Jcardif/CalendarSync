@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using static CalendarSync.Helpers.Helpers;
 using CalendarSync.Helpers;
+using static CalendarSync.Helpers.Extensions;
 
 namespace CalendarSync.Functions
 {
@@ -47,7 +48,7 @@ namespace CalendarSync.Functions
             if (calendarEvent is null || string.IsNullOrEmpty(calendarEvent.PersonalAccEventId))
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.BadRequest, "No valid calendar event was passed");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No valid calendar event was passed");
 
                 return response;
             }
@@ -56,10 +57,10 @@ namespace CalendarSync.Functions
             MyAppSettings = GetAppSettings();
 
             // confilrm that the app settings were retrieved
-            if (string.IsNullOrEmpty(MyAppSettings.ConnectionString) || string.IsNullOrEmpty(MyAppSettings.KeyVaultUri) || string.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName) || string.IsNullOrEmpty(MyAppSettings.CalendarId))
+            if (MyAppSettings is null || string.IsNullOrEmpty(MyAppSettings.ConnectionString) || string.IsNullOrEmpty(MyAppSettings.KeyVaultUri) || string.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName) || string.IsNullOrEmpty(MyAppSettings.CalendarId))
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.InternalServerError, "App settings were not retrieved");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.InternalServerError, "App settings were not retrieved");
 
                 return response;
             }
@@ -72,7 +73,7 @@ namespace CalendarSync.Functions
             if (googleCalendarService is null)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.Unauthorized, "Unable to authenticate to Google Cloud Console");
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized, "Unable to authenticate to Google Cloud Console");
 
                 return response;
             }
@@ -85,7 +86,7 @@ namespace CalendarSync.Functions
             if (existingCalendarEvent is null || existingCalendarEvent.PersonalAccEventId == null)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.NotFound, "Event not found", workAccEventId);
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.NotFound, "Event not found", workAccEventId);
                 return response;
             }
 
@@ -107,33 +108,17 @@ namespace CalendarSync.Functions
             if (updatedCalendarEvent is null)
             {
                 // get response from helper method
-                response = CreateResponse(req, HttpStatusCode.InternalServerError, "Unable to update calendar event", workAccEventId);
+                response = req.CreateFunctionReturnResponse(HttpStatusCode.InternalServerError, "Unable to update calendar event", workAccEventId);
                 return response;
             }
 
-            response = CreateResponse(req, HttpStatusCode.OK, "Calendar event updated successfully", new
+            response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Calendar event updated successfully", new
              {
                 calendarEvent = updatedCalendarEvent,
                 googleCalendarEvent = updatedCalendarEvent
              });
 
 
-            return response;
-        }
-
-        private HttpResponseData CreateResponse(HttpRequestData req, HttpStatusCode statusCode, string message, object? data = null)
-        {
-            var response = req.CreateResponse(statusCode);
-            // add json content type to the response
-            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-
-            // write the error message to the response body
-            var responseMessage = new
-            {
-                Message = message,
-                Data = data
-            };
-            response.WriteString(JsonConvert.SerializeObject(responseMessage));
             return response;
         }
     }
