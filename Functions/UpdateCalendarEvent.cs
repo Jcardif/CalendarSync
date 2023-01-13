@@ -8,6 +8,8 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using static CalendarSync.Helpers.Helpers;
+using CalendarSync.Helpers;
 
 namespace CalendarSync.Functions
 {
@@ -20,11 +22,9 @@ namespace CalendarSync.Functions
             _logger = loggerFactory.CreateLogger<UpdateCalendarEvent>();
         }
 
-        public string? ConnectionString { get; private set; }
-        public string? KeyVaultUri { get; private set; }
-        public string? KeyVaultSecretName { get; private set; }
-        public string? CalendarId { get; private set; }
         public GoogleCalendarService? GoogleCalendarService { get; private set; }
+
+        public AppSettings? MyAppSettings { get; private set; }
 
         [Function("UpdateCalendarEvent")]
         public async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
@@ -53,10 +53,10 @@ namespace CalendarSync.Functions
             }
 
             // Get app settings
-            GetAppSettings();
+            MyAppSettings = GetAppSettings();
 
             // confilrm that the app settings were retrieved
-            if (string.IsNullOrEmpty(ConnectionString) || string.IsNullOrEmpty(KeyVaultUri) || string.IsNullOrEmpty(KeyVaultSecretName) || string.IsNullOrEmpty(CalendarId))
+            if (string.IsNullOrEmpty(MyAppSettings.ConnectionString) || string.IsNullOrEmpty(MyAppSettings.KeyVaultUri) || string.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName) || string.IsNullOrEmpty(MyAppSettings.CalendarId))
             {
                 // get response from helper method
                 response = CreateResponse(req, HttpStatusCode.InternalServerError, "App settings were not retrieved");
@@ -66,7 +66,7 @@ namespace CalendarSync.Functions
 
             // Authenticate to Google Cloud Console and get an access token for Google Calendar
             GoogleCalendarService = new GoogleCalendarService();
-            var googleCalendarService = await GoogleCalendarService.AuthenticateGoogleCloudAsync(KeyVaultUri, KeyVaultSecretName);
+            var googleCalendarService = await GoogleCalendarService.AuthenticateGoogleCloudAsync(MyAppSettings.KeyVaultUri, MyAppSettings.KeyVaultSecretName);
 
             // Check if the token was acquired successfully
             if (googleCalendarService is null)
@@ -101,7 +101,7 @@ namespace CalendarSync.Functions
             context?.SaveChanges();
 
             // update the calendar event in Google Calendar
-            var updatedCalendarEvent = await GoogleCalendarService.UpdateEventAsync(existingCalendarEvent, CalendarId);
+            var updatedCalendarEvent = await GoogleCalendarService.UpdateEventAsync(existingCalendarEvent, MyAppSettings.CalendarId);
 
             // check if the calendar event was updated successfully
             if (updatedCalendarEvent is null)
@@ -135,22 +135,6 @@ namespace CalendarSync.Functions
             };
             response.WriteString(JsonConvert.SerializeObject(responseMessage));
             return response;
-        }
-
-        private void GetAppSettings()
-        {
-            // Get the connection string from the secrets file and key vault on azure
-            var config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables()
-                .Build();
-
-            ConnectionString = config.GetConnectionString("DefaultConnection");
-
-            KeyVaultUri = config["AzureKeyVault:KeyVaultUrl"];
-            KeyVaultSecretName = config["AzureKeyVault:SecretName"];
-            CalendarId = config["GoogleCloudConsole:CalendarId"];
         }
     }
 }

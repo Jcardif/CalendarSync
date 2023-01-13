@@ -23,7 +23,7 @@ namespace CalendarSync.Functions
         public OutlookCalendarService? OutlookCalendarService { get; set; }
         public GoogleCalendarService? GoogleCalendarService { get; set; }
 
-        public AppSe
+        public AppSettings? MyAppSettings { get; set; }
 
         public SyncNewEvents(ILoggerFactory loggerFactory)
         {
@@ -63,10 +63,17 @@ namespace CalendarSync.Functions
             }
 
             // Get app settings
-            GetAppSettings();
+            MyAppSettings = GetAppSettings();
 
             // confilrm that the app settings were retrieved
-            if (String.IsNullOrEmpty(ConnectionString) || String.IsNullOrEmpty(ClientId) || String.IsNullOrEmpty(ClientSecret) || String.IsNullOrEmpty(TenantId) || String.IsNullOrEmpty(KeyVaultSecretName) || String.IsNullOrEmpty(KeyVaultUri) || String.IsNullOrEmpty(CalendarId) || String.IsNullOrEmpty(UserPrincipalName))
+            if (String.IsNullOrEmpty(MyAppSettings.ConnectionString)
+                || String.IsNullOrEmpty(MyAppSettings.ClientId)
+                || String.IsNullOrEmpty(MyAppSettings.ClientSecret)
+                || String.IsNullOrEmpty(MyAppSettings.TenantId)
+                || String.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName)
+                || String.IsNullOrEmpty(MyAppSettings.KeyVaultUri)
+                || String.IsNullOrEmpty(MyAppSettings.CalendarId)
+                || String.IsNullOrEmpty(MyAppSettings.UserPrincipalName))
             {
                 // get response from helper method
                 response = CreateResponse(req, HttpStatusCode.BadRequest, "App settings are missing");
@@ -76,7 +83,7 @@ namespace CalendarSync.Functions
 
             // Authenticate to Azure AD and get an access token for Microsoft Graph
             OutlookCalendarService = new OutlookCalendarService();
-            var authenticated = await OutlookCalendarService.AuthenticateAzureAdAsync(ClientId, ClientSecret, TenantId);
+            var authenticated = await OutlookCalendarService.AuthenticateAzureAdAsync(MyAppSettings.ClientId, MyAppSettings.ClientSecret, MyAppSettings.TenantId);
 
             // Check if the token was acquired successfully
             if (!authenticated)
@@ -89,7 +96,7 @@ namespace CalendarSync.Functions
 
             // Authenticate to Google Cloud Console and get an access token for Google Calendar
             GoogleCalendarService = new GoogleCalendarService();
-            var googleCalendarService = await GoogleCalendarService.AuthenticateGoogleCloudAsync(KeyVaultUri, KeyVaultSecretName);
+            var googleCalendarService = await GoogleCalendarService.AuthenticateGoogleCloudAsync(MyAppSettings.KeyVaultUri, MyAppSettings.KeyVaultSecretName);
 
             // Check if the token was acquired successfully
             if (googleCalendarService is null)
@@ -127,7 +134,7 @@ namespace CalendarSync.Functions
                 calendarEvent.Body = "#meeting";
 
                 // create event in user's calendar
-                var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, CalendarId);
+                var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, MyAppSettings.CalendarId);
 
                 // check if event was created successfully
                 if (newEvent is null)
