@@ -61,9 +61,9 @@ namespace CalendarSync.Services.GoogleCloudConsole
         }
 
         // Convert to user calendar Timezone
-        private DateTimeOffset ConvertToUserCalendarTimezone(Calendar calendar, DateTimeOffset timeOffsetToConvert, string IanaTimeZone)
+        private DateTimeOffset ConvertToUserCalendarTimezone(DateTimeOffset timeOffsetToConvert, string ianaTimeZone)
         {
-            var calendarTimezoneInfo = TZConvert.GetTimeZoneInfo(IanaTimeZone);
+            var calendarTimezoneInfo = TZConvert.GetTimeZoneInfo(ianaTimeZone);
             return TimeZoneInfo.ConvertTime(timeOffsetToConvert, calendarTimezoneInfo);
         }
 
@@ -75,7 +75,7 @@ namespace CalendarSync.Services.GoogleCloudConsole
                 return null;
 
             // Insert the new event into the user's calendar
-            var calendar = CalendarService.Calendars.Get(calendarId).Execute();
+            var calendar = await CalendarService.Calendars.Get(calendarId).ExecuteAsync();
         
             // Create a new event
             var newEvent = new Event
@@ -83,11 +83,11 @@ namespace CalendarSync.Services.GoogleCloudConsole
                 Summary = calendarEvent.Subject,
                 Start = new EventDateTime
                 {
-                    DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime
+                    DateTime = ConvertToUserCalendarTimezone(calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime
                 },
                 End = new EventDateTime
                 {
-                    DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime
+                    DateTime = ConvertToUserCalendarTimezone(calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime
                 },
                 Description = calendarEvent.Body,
             };
