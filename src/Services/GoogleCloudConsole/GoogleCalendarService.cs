@@ -9,6 +9,7 @@ using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.Services.AppAuthentication;
 using CalendarSync.Helpers;
 using TimeZoneConverter;
+using Microsoft.Extensions.Logging;
 
 namespace CalendarSync.Services.GoogleCloudConsole
 {
@@ -16,7 +17,6 @@ namespace CalendarSync.Services.GoogleCloudConsole
     {
         // Calendar service property
         public CalendarService? CalendarService { get; set; }
-
 
         // Get the private key file from azure vault
         private async Task<string> GetPrivateKeyFileAsync(string keyVaultUrl, string secretName)
@@ -61,10 +61,13 @@ namespace CalendarSync.Services.GoogleCloudConsole
         }
 
         // Convert to user calendar Timezone
-        private DateTimeOffset ConvertToUserCalendarTimezone(DateTimeOffset timeOffsetToConvert, string ianaTimeZone)
+        private DateTimeOffset ConvertToUtcTimezone(DateTimeOffset timeOffsetToConvert, string ianaTimeZone)
         {
             var calendarTimezoneInfo = TZConvert.GetTimeZoneInfo(ianaTimeZone);
-            return TimeZoneInfo.ConvertTime(timeOffsetToConvert, calendarTimezoneInfo);
+
+            var convertedDate = TimeZoneInfo.ConvertTimeToUtc(timeOffsetToConvert.DateTime, calendarTimezoneInfo);
+
+            return convertedDate;
         }
 
         // Add a new event to the user's calendar
@@ -83,12 +86,13 @@ namespace CalendarSync.Services.GoogleCloudConsole
                 Summary = calendarEvent.Subject,
                 Start = new EventDateTime
                 {
-                    DateTime = ConvertToUserCalendarTimezone(calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime
+                    DateTime = ConvertToUtcTimezone(calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime,
                 },
                 End = new EventDateTime
                 {
-                    DateTime = ConvertToUserCalendarTimezone(calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime
+                    DateTime = ConvertToUtcTimezone(calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime,
                 },
+
                 Description = calendarEvent.Body,
             };
             
@@ -131,11 +135,11 @@ namespace CalendarSync.Services.GoogleCloudConsole
             eventToUpdate.Summary = calendarEvent.Subject;
             eventToUpdate.Start = new EventDateTime
             {
-                DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime
+                DateTime = ConvertToUtcTimezone(calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime
             };
             eventToUpdate.End = new EventDateTime
             {
-                DateTime = ConvertToUserCalendarTimezone(calendar, calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime
+                DateTime = ConvertToUtcTimezone(calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime
             };
             eventToUpdate.Description = calendarEvent.Body;
 
