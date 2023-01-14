@@ -27,8 +27,7 @@ namespace CalendarSync.Services.GoogleCloudConsole
 
             // Create the Key Vault client
             KeyVaultClient keyVaultClient = new KeyVaultClient(
-                new KeyVaultClient.AuthenticationCallback(
-                    (authority, resource, scope) => azureServiceTokenProvider.KeyVaultTokenCallback(authority, resource, scope)));
+                (authority, resource, scope) => azureServiceTokenProvider.KeyVaultTokenCallback(authority, resource, scope));
 
             // Get the secret value
             SecretBundle secret = await keyVaultClient.GetSecretAsync(keyVaultUrl, secretName);
