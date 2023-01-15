@@ -13,6 +13,7 @@ using CalendarSync.Services.GoogleCloudConsole;
 using static CalendarSync.Helpers.Helpers;
 using CalendarSync.Helpers;
 using static CalendarSync.Helpers.Extensions;
+using System.Web;
 
 namespace CalendarSync.Functions
 {
@@ -38,14 +39,50 @@ namespace CalendarSync.Functions
 
             HttpResponseData response;
 
+            // Get query string parameters
+            var query = HttpUtility.ParseQueryString(req.Url.Query);
+
+            var bodyType = query["BodyType"];
+
             // Read the values for the new row from the body of the request
             string requestBody = new StreamReader(req.Body).ReadToEnd();
 
             try
             {
+                if (bodyType == "list")
+                {
 
-                calendarEvents = JsonConvert.DeserializeObject<List<CalendarEvent>>(requestBody);
+                    calendarEvents = JsonConvert.DeserializeObject<List<CalendarEvent>>(requestBody);
+
+                    // check if list is null or empty
+                    if (calendarEvents is null || calendarEvents.Count == 0)
+                    {
+                        // get response from helper method
+                        response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No events were passed");
+
+                        return response;
+                    }
+                }
+
+                else
+                {
+                    var calendarEvent = JsonConvert.DeserializeObject<CalendarEvent>(requestBody);
+
+                    // check if event is null
+                    if (calendarEvent is null)
+                    {
+                        // get response from helper method
+                        response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No event was passed");
+
+                        return response;
+                    }
+
+                    calendarEvents = new List<CalendarEvent> { calendarEvent };
+                }
+
             }
+
+
             catch (Exception ex)
             {
                 // get response from helper method
@@ -54,14 +91,7 @@ namespace CalendarSync.Functions
                 return response;
             }
 
-            // check if list is null or empty
-            if (calendarEvents is null || calendarEvents.Count == 0)
-            {
-                // get response from helper method
-                response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No events were passed");
 
-                return response;
-            }
 
             // Get app settings
             MyAppSettings = GetAppSettings();
@@ -111,13 +141,13 @@ namespace CalendarSync.Functions
 
             // Use EF Core to insert a record into the table & Apply any pending migrationn
             var context = new AppDbContext();
-        
+
             context.Database.Migrate();
             context.Database.EnsureCreated();
 
             List<Object> cEvents = new List<Object>();
 
-            foreach(var calendarEvent in calendarEvents)
+            foreach (var calendarEvent in calendarEvents)
             {
                 var existingCalendarEvent = context?.CalendarEvents?.Find(calendarEvent.Id);
                 if (existingCalendarEvent != null)
@@ -143,7 +173,7 @@ namespace CalendarSync.Functions
                 {
                     cEvents.Add(new
                     {
-                        calendarEvent=calendarEvent,
+                        calendarEvent = calendarEvent,
                         message = "Calendar Event was not created in Google Calendar"
                     });
 
@@ -160,8 +190,8 @@ namespace CalendarSync.Functions
 
                 cEvents.Add(new
                 {
-                    calendarEvent=existingCalendarEvent,
-                    googleCalendarEvent=newEvent,
+                    calendarEvent = existingCalendarEvent,
+                    googleCalendarEvent = newEvent,
                     message = "CalendarEvent created"
                 });
 
