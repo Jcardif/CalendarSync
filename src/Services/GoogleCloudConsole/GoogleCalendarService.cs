@@ -60,16 +60,6 @@ namespace CalendarSync.Services.GoogleCloudConsole
 
         }
 
-        // Convert to user calendar Timezone
-        private DateTimeOffset ConvertToUtcTimezone(DateTimeOffset timeOffsetToConvert, string ianaTimeZone)
-        {
-            var calendarTimezoneInfo = TZConvert.GetTimeZoneInfo(ianaTimeZone);
-
-            var convertedDate = TimeZoneInfo.ConvertTimeToUtc(timeOffsetToConvert.DateTime, calendarTimezoneInfo);
-
-            return convertedDate;
-        }
-
         // Add a new event to the user's calendar
         public async Task<Event?> CreateNewEventAsync(CalendarEvent calendarEvent, string calendarId)
         {
@@ -86,11 +76,11 @@ namespace CalendarSync.Services.GoogleCloudConsole
                 Summary = calendarEvent.Subject,
                 Start = new EventDateTime
                 {
-                    DateTime = ConvertToUtcTimezone(calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime,
+                    DateTime = new DateTime(calendarEvent.StartTimeWithTimeZone.Ticks, DateTimeKind.Utc)
                 },
                 End = new EventDateTime
                 {
-                    DateTime = ConvertToUtcTimezone(calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime,
+                    DateTime = new DateTime(calendarEvent.EndTimeWithTimeZone.Ticks, DateTimeKind.Utc)
                 },
 
                 Description = calendarEvent.Body,
@@ -135,11 +125,11 @@ namespace CalendarSync.Services.GoogleCloudConsole
             eventToUpdate.Summary = calendarEvent.Subject;
             eventToUpdate.Start = new EventDateTime
             {
-                DateTime = ConvertToUtcTimezone(calendarEvent.StartTimeWithTimeZone, calendar.TimeZone).DateTime
+                DateTime = new DateTime(calendarEvent.StartTimeWithTimeZone.Ticks, DateTimeKind.Utc)
             };
             eventToUpdate.End = new EventDateTime
             {
-                DateTime = ConvertToUtcTimezone(calendarEvent.EndTimeWithTimeZone, calendar.TimeZone).DateTime
+                DateTime = new DateTime(calendarEvent.EndTimeWithTimeZone.Ticks, DateTimeKind.Utc)
             };
             eventToUpdate.Description = calendarEvent.Body;
 
