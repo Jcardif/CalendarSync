@@ -97,6 +97,7 @@ namespace CalendarSync.Functions
             existingCalendarEvent.EndTimeWithTimeZone = calendarEvent.EndTimeWithTimeZone;
             existingCalendarEvent.Subject = calendarEvent.Subject;
             existingCalendarEvent.Importance = calendarEvent.Importance;
+            existingCalendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "#focustime" : "#meeting";
 
             context?.CalendarEvents?.Update(existingCalendarEvent);
             context?.SaveChanges();

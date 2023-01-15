@@ -133,7 +133,7 @@ namespace CalendarSync.Functions
                 context?.CalendarEvents?.Add(calendarEvent);
                 context?.SaveChanges();
 
-                calendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "focustime" : "#meeting";
+                calendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "#focustime" : "#meeting";
 
                 // create event in user's calendar
                 var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, MyAppSettings.CalendarId);

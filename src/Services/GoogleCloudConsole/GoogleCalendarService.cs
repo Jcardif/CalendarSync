@@ -1,4 +1,3 @@
-using System.Text;
 using CalendarSync.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
@@ -7,9 +6,6 @@ using Google.Apis.Services;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.Services.AppAuthentication;
-using CalendarSync.Helpers;
-using TimeZoneConverter;
-using Microsoft.Extensions.Logging;
 
 namespace CalendarSync.Services.GoogleCloudConsole
 {
