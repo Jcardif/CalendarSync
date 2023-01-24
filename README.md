@@ -1,5 +1,5 @@
 # CalendarSync
-Sync Calendar Events/Meetings from work account with personal outlook leveraging Microsoft Graph, Google Calendar API &amp; Azure Functions.
+Sync Calendar Events/Meetings from work account (office365) with personal outlook ot google leveraging Microsoft Graph, Google Calendar API &amp; Azure Functions.
 
 # Getting Started
 ## App Settings
