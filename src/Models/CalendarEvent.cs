@@ -2,113 +2,98 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Security.Cryptography;
 using System.Text;
-using Newtonsoft.Json;
 
-namespace CalendarSync.Models
+namespace CalendarSync.Models;
+
+public class CalendarEvent
 {
-    public class CalendarEvent
+    private string? _end;
+    private string? _endWithTimeZone;
+    private string? _id;
+    private string? _start;
+    private string? _startWithTimeZone;
+
+
+    [Key]
+    public string? Id
     {
-        private string? _id;
-        private string? _start;
-        private string? _end;
-        private string? _startWithTimeZone;
-        private string? _endWithTimeZone;
+        get => _id;
 
-
-        [Key]
-        public string? Id 
+        set
         {
-             get
-             {
-                return _id;
-             }
-
-             set
-             {
-                WorkAccEventId=value;
-                _id = CreateHash($"{Subject}{WorkAccEventId}{StartTime}{EndTime}");
-             }
+            WorkAccEventId = value;
+            _id = CreateHash($"{Subject}{WorkAccEventId}{StartTime}{EndTime}");
         }
+    }
 
-        [Required]
-        public string? WorkAccEventId { get; set; }
-        public string? PersonalAccEventId { get; set; }
-        public DateTime StartTime { get; set; }
-        public DateTimeOffset StartTimeWithTimeZone { get; set; }
-        public DateTime EndTime { get; set; }
-        public DateTimeOffset EndTimeWithTimeZone { get; set; }
-        public string? Subject { get; set; }
-        public string? Importance { get; set; }
+    [Required] public string? WorkAccEventId { get; set; }
 
-        [NotMapped]
-        public string? Start
+    public string? PersonalAccEventId { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTimeOffset StartTimeWithTimeZone { get; set; }
+    public DateTime EndTime { get; set; }
+    public DateTimeOffset EndTimeWithTimeZone { get; set; }
+    public string? Subject { get; set; }
+    public string? Importance { get; set; }
+
+    [NotMapped]
+    public string? Start
+    {
+        get => _start;
+        set
         {
-            get { return _start; }
-            set
-            {
-                _start = value;
-                if (!string.IsNullOrEmpty(_start) && DateTime.TryParse(_start, out DateTime startTime))
-                {
-                    StartTime = startTime;
-                }
-            }
+            _start = value;
+            if (!string.IsNullOrEmpty(_start) && DateTime.TryParse(_start, out var startTime)) StartTime = startTime;
         }
+    }
 
-        [NotMapped]
-        public string? End
+    [NotMapped]
+    public string? End
+    {
+        get => _end;
+        set
         {
-            get { return _end; }
-            set
-            {
-                _end = value;
-                if (!string.IsNullOrEmpty(_end) && DateTime.TryParse(_end, out DateTime endTime))
-                {
-                    EndTime = endTime;
-                }
-            }
+            _end = value;
+            if (!string.IsNullOrEmpty(_end) && DateTime.TryParse(_end, out var endTime)) EndTime = endTime;
         }
+    }
 
-        [NotMapped]
-        public string? StartWithTimeZone
+    [NotMapped]
+    public string? StartWithTimeZone
+    {
+        get => _startWithTimeZone;
+        set
         {
-            get { return _startWithTimeZone; }
-            set
-            {
-                _startWithTimeZone = value;
-                if (!string.IsNullOrEmpty(_startWithTimeZone) && DateTimeOffset.TryParse(_startWithTimeZone, out DateTimeOffset startTimeWithTimeZone))
-                {
-                    StartTimeWithTimeZone = startTimeWithTimeZone;
-                }
-            }
+            _startWithTimeZone = value;
+            if (!string.IsNullOrEmpty(_startWithTimeZone) &&
+                DateTimeOffset.TryParse(_startWithTimeZone, out var startTimeWithTimeZone))
+                StartTimeWithTimeZone = startTimeWithTimeZone;
         }
+    }
 
-        [NotMapped]
-        public string? EndWithTimeZone
+    [NotMapped]
+    public string? EndWithTimeZone
+    {
+        get => _endWithTimeZone;
+        set
         {
-            get { return _endWithTimeZone; }
-            set
-            {
-                _endWithTimeZone = value;
-                if (!string.IsNullOrEmpty(_endWithTimeZone) && DateTimeOffset.TryParse(_endWithTimeZone, out DateTimeOffset endTimeWithTimeZone))
-                {
-                    EndTimeWithTimeZone = endTimeWithTimeZone;
-                }
-            }
+            _endWithTimeZone = value;
+            if (!string.IsNullOrEmpty(_endWithTimeZone) &&
+                DateTimeOffset.TryParse(_endWithTimeZone, out var endTimeWithTimeZone))
+                EndTimeWithTimeZone = endTimeWithTimeZone;
         }
+    }
 
-        [NotMapped]
-        public string? Body { get; set; }
+    [NotMapped] public string? Body { get; set; }
 
-        
-        public string CreateHash(string input)
+
+    public string CreateHash(string input)
+    {
+        using (var sha256 = SHA256.Create())
         {
-            using (var sha256 = SHA256.Create())
-            {
-                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
-                var hash = BitConverter.ToString(hashedBytes).Replace("-", "").ToLowerInvariant();
-                return hash.ToString();
-            }
+            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+            var hash = BitConverter.ToString(hashedBytes).Replace("-", "").ToLowerInvariant();
+            return hash;
         }
-
     }
 }
