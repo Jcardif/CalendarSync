@@ -17,13 +17,6 @@ The local.settings.json has the following settings defined for use in the app.
     "DefaultConnection": ""
   },
 
-  "AzureAd":{
-    "ClientId":"",
-    "ClientSecret":"",
-    "TenantId":"",
-    "UserPrincipalName" : ""
-  },
-
   "AzureKeyVault":
   {
     "SecretName":"",
