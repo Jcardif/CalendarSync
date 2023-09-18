@@ -28,11 +28,7 @@ public static class Helpers
             ConnectionString = connectionString,
             KeyVaultSecretName = keyVaultSecretName,
             KeyVaultUri = keyVaultUri,
-            CalendarId = calendarId,
-            ClientId = clientId,
-            ClientSecret = clientSecret,
-            TenantId = tenantId,
-            UserPrincipalName = userPrincipalName
+            CalendarId = calendarId
         };
     }
 }

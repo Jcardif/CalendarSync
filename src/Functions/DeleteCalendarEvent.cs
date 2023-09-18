@@ -47,7 +47,7 @@ public class DeleteCalendarEvent
         // Get app settings
         MyAppSettings = GetAppSettings();
 
-        // confilrm that the app settings were retrieved
+        // confirm that the app settings were retrieved
         if (MyAppSettings is null
             || string.IsNullOrEmpty(MyAppSettings.ConnectionString)
             || string.IsNullOrEmpty(MyAppSettings.KeyVaultUri)

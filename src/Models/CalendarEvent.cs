@@ -9,13 +9,13 @@ public class CalendarEvent
 {
     private string? _end;
     private string? _endWithTimeZone;
-    private string? _id;
+    private string _id = string.Empty;
     private string? _start;
     private string? _startWithTimeZone;
 
 
     [Key]
-    public string? Id
+    public string Id
     {
         get => _id;
 
@@ -26,14 +26,16 @@ public class CalendarEvent
         }
     }
 
-    [Required] public string? WorkAccEventId { get; set; }
+    [Required] 
+    public required string WorkAccEventId { get; set; }
 
     public string? PersonalAccEventId { get; set; }
     public DateTime StartTime { get; set; }
     public DateTimeOffset StartTimeWithTimeZone { get; set; }
     public DateTime EndTime { get; set; }
     public DateTimeOffset EndTimeWithTimeZone { get; set; }
-    public string? Subject { get; set; }
+    [Required]
+    public required string Subject { get; set; }
     public string? Importance { get; set; }
 
     [NotMapped]

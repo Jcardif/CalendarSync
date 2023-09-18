@@ -3,7 +3,6 @@ using System.Web;
 using CalendarSync.Data;
 using CalendarSync.Helpers;
 using CalendarSync.Models;
-using CalendarSync.Service.AzureAD;
 using CalendarSync.Services.GoogleCloudConsole;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -24,7 +23,6 @@ public class SyncNewEvents
         _logger = loggerFactory.CreateLogger<SyncNewEvents>();
     }
 
-    public OutlookCalendarService? OutlookCalendarService { get; set; }
     public GoogleCalendarService? GoogleCalendarService { get; set; }
 
     public AppSettings? MyAppSettings { get; set; }
@@ -93,31 +91,12 @@ public class SyncNewEvents
         // confirm that the app settings were retrieved
         if (MyAppSettings is null
             || string.IsNullOrEmpty(MyAppSettings.ConnectionString)
-            || string.IsNullOrEmpty(MyAppSettings.ClientId)
-            || string.IsNullOrEmpty(MyAppSettings.ClientSecret)
-            || string.IsNullOrEmpty(MyAppSettings.TenantId)
             || string.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName)
             || string.IsNullOrEmpty(MyAppSettings.KeyVaultUri)
-            || string.IsNullOrEmpty(MyAppSettings.CalendarId)
-            || string.IsNullOrEmpty(MyAppSettings.UserPrincipalName))
+            || string.IsNullOrEmpty(MyAppSettings.CalendarId))
         {
             // get response from helper method
             response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "App settings are missing");
-
-            return response;
-        }
-
-        // Authenticate to Azure AD and get an access token for Microsoft Graph
-        OutlookCalendarService = new OutlookCalendarService();
-        var authenticated = await OutlookCalendarService.AuthenticateAzureAdAsync(MyAppSettings.ClientId,
-            MyAppSettings.ClientSecret, MyAppSettings.TenantId);
-
-        // Check if the token was acquired successfully
-        if (!authenticated)
-        {
-            // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized,
-                "Unable to authenticate to Azure AD");
 
             return response;
         }
@@ -138,7 +117,7 @@ public class SyncNewEvents
             return response;
         }
 
-        // Use EF Core to insert a record into the table & Apply any pending migrationn
+        // Use EF Core to insert a record into the table & Apply any pending migration
         var context = new AppDbContext();
 
         context.Database.Migrate();
