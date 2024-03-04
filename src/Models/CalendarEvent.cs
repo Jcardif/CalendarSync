@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+
 
 namespace CalendarSync.Models;
 
@@ -45,7 +47,7 @@ public class CalendarEvent
         set
         {
             _start = value;
-            if (!string.IsNullOrEmpty(_start) && DateTime.TryParse(_start, out var startTime)) StartTime = startTime;
+            if (!string.IsNullOrEmpty(_start) && DateTime.TryParse(_start, CultureInfo.InvariantCulture, out var startTime)) StartTime = startTime;
         }
     }
 
@@ -56,7 +58,7 @@ public class CalendarEvent
         set
         {
             _end = value;
-            if (!string.IsNullOrEmpty(_end) && DateTime.TryParse(_end, out var endTime)) EndTime = endTime;
+            if (!string.IsNullOrEmpty(_end) && DateTime.TryParse(_end, CultureInfo.InvariantCulture, out var endTime)) EndTime = endTime;
         }
     }
 
@@ -68,7 +70,7 @@ public class CalendarEvent
         {
             _startWithTimeZone = value;
             if (!string.IsNullOrEmpty(_startWithTimeZone) &&
-                DateTimeOffset.TryParse(_startWithTimeZone, out var startTimeWithTimeZone))
+                DateTimeOffset.TryParse(_startWithTimeZone, CultureInfo.InvariantCulture, out var startTimeWithTimeZone))
                 StartTimeWithTimeZone = startTimeWithTimeZone;
         }
     }
@@ -81,7 +83,7 @@ public class CalendarEvent
         {
             _endWithTimeZone = value;
             if (!string.IsNullOrEmpty(_endWithTimeZone) &&
-                DateTimeOffset.TryParse(_endWithTimeZone, out var endTimeWithTimeZone))
+                DateTimeOffset.TryParse(_endWithTimeZone, CultureInfo.InvariantCulture, out var endTimeWithTimeZone))
                 EndTimeWithTimeZone = endTimeWithTimeZone;
         }
     }

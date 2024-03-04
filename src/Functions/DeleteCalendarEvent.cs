@@ -80,7 +80,7 @@ public class DeleteCalendarEvent
 
         // get the calendar event from the database
         var context = new AppDbContext();
-        var calendarEvent = context?.CalendarEvents?.FirstOrDefault(e => e.WorkAccEventId == workAccEventId);
+        var calendarEvent = context.CalendarEvents?.FirstOrDefault(e => e.WorkAccEventId == workAccEventId);
 
         // check if the calendar event was found
         if (calendarEvent == null || calendarEvent.PersonalAccEventId == null)
@@ -95,8 +95,8 @@ public class DeleteCalendarEvent
         await GoogleCalendarService.DeleteEvent(calendarEvent.PersonalAccEventId, MyAppSettings.CalendarId);
 
         // delete the calendar event from the database
-        context?.CalendarEvents?.Remove(calendarEvent);
-        context?.SaveChanges();
+        context.CalendarEvents?.Remove(calendarEvent);
+        context.SaveChanges();
 
 
         response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Event deleted", true);

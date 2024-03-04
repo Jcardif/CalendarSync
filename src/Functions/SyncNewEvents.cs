@@ -141,6 +141,10 @@ public class SyncNewEvents
             context?.CalendarEvents?.Add(calendarEvent);
             context?.SaveChanges();
 
+            // do no add viva generated appointments 
+            if(calendarEvent.Subject.Contains("Take a break") || calendarEvent.Subject.Contains("Catch up on messages"))
+                continue;
+
             calendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "#focustime" : "#meeting";
 
             // create event in user's calendar
