@@ -6,7 +6,7 @@ namespace CalendarSync.Helpers;
 
 public static class Extensions
 {
-    public static HttpResponseData CreateFunctionReturnResponse(this HttpRequestData req, HttpStatusCode statusCode,
+    public static async Task<HttpResponseData> CreateFunctionReturnResponseAsync(this HttpRequestData req, HttpStatusCode statusCode,
         string message, object? data = null)
     {
         var response = req.CreateResponse(statusCode);
@@ -19,7 +19,7 @@ public static class Extensions
             Message = message,
             Data = data
         };
-        response.WriteString(JsonConvert.SerializeObject(responseMessage));
+        await response.WriteStringAsync(JsonConvert.SerializeObject(responseMessage));
         return response;
     }
 }

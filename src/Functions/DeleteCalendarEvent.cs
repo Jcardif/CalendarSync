@@ -39,7 +39,7 @@ public class DeleteCalendarEvent
         if (string.IsNullOrEmpty(workAccEventId))
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No event id was passed");
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest, "No event id was passed");
 
             return response;
         }
@@ -55,7 +55,7 @@ public class DeleteCalendarEvent
             || string.IsNullOrEmpty(MyAppSettings.CalendarId))
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.InternalServerError,
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.InternalServerError,
                 "App settings were not retrieved");
 
             return response;
@@ -71,7 +71,7 @@ public class DeleteCalendarEvent
         if (googleCalendarService is null)
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized,
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,
                 "Unable to authenticate to Google Cloud Console");
 
             return response;
@@ -86,7 +86,7 @@ public class DeleteCalendarEvent
         if (calendarEvent == null || calendarEvent.PersonalAccEventId == null)
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.NotFound, "Event not found", workAccEventId);
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.NotFound, "Event not found", workAccEventId);
 
             return response;
         }
@@ -99,7 +99,7 @@ public class DeleteCalendarEvent
         context.SaveChanges();
 
 
-        response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Event deleted", true);
+        response =await req.CreateFunctionReturnResponseAsync(HttpStatusCode.OK, "Event deleted", true);
 
         return response;
     }

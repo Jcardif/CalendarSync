@@ -46,7 +46,7 @@ public class UpdateCalendarEvent
         if (calendarEvent is null || string.IsNullOrEmpty(calendarEvent.WorkAccEventId))
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest,
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest,
                 "No valid calendar event was passed");
 
             return response;
@@ -61,7 +61,7 @@ public class UpdateCalendarEvent
             string.IsNullOrEmpty(MyAppSettings.CalendarId))
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.InternalServerError,
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.InternalServerError,
                 "App settings were not retrieved");
 
             return response;
@@ -77,7 +77,7 @@ public class UpdateCalendarEvent
         if (googleCalendarService is null)
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized,
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,
                 "Unable to authenticate to Google Cloud Console");
 
             return response;
@@ -91,7 +91,7 @@ public class UpdateCalendarEvent
         if (existingCalendarEvent is null || existingCalendarEvent.PersonalAccEventId == null)
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.NotFound, "Event not found", workAccEventId);
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.NotFound, "Event not found", workAccEventId);
             return response;
         }
 
@@ -115,12 +115,12 @@ public class UpdateCalendarEvent
         if (updatedCalendarEvent is null)
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.InternalServerError,
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.InternalServerError,
                 "Unable to update calendar event", workAccEventId);
             return response;
         }
 
-        response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Calendar event updated successfully", new
+        response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.OK, "Calendar event updated successfully", new
         {
             calendarEvent = updatedCalendarEvent,
             googleCalendarEvent = updatedCalendarEvent

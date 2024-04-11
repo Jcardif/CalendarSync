@@ -52,7 +52,7 @@ public class SyncNewEvents
                 if (calendarEvents is null || calendarEvents.Count == 0)
                 {
                     // get response from helper method
-                    response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No events were passed");
+                    response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest, "No events were passed");
 
                     return response;
                 }
@@ -66,7 +66,7 @@ public class SyncNewEvents
                 if (calendarEvent is null)
                 {
                     // get response from helper method
-                    response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "No event was passed");
+                    response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest, "No event was passed");
 
                     return response;
                 }
@@ -79,7 +79,7 @@ public class SyncNewEvents
         catch (Exception ex)
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, ex.Message);
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest, ex.Message);
 
             return response;
         }
@@ -96,7 +96,7 @@ public class SyncNewEvents
             || string.IsNullOrEmpty(MyAppSettings.CalendarId))
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.BadRequest, "App settings are missing");
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest, "App settings are missing");
 
             return response;
         }
@@ -111,7 +111,7 @@ public class SyncNewEvents
         if (googleCalendarService is null)
         {
             // get response from helper method
-            response = req.CreateFunctionReturnResponse(HttpStatusCode.Unauthorized,
+            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,
                 "Unable to authenticate to Google Cloud Console");
 
             return response;
@@ -179,7 +179,7 @@ public class SyncNewEvents
         }
 
         // return the new event
-        response = req.CreateFunctionReturnResponse(HttpStatusCode.OK, "Successfully Executed", cEvents);
+        response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.OK, "Successfully Executed", cEvents);
         return response;
     }
 }
