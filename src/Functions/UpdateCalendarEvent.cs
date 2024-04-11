@@ -38,7 +38,7 @@ public class UpdateCalendarEvent
         var workAccEventId = query["WorkAccEventId"];
 
         // Read the values for the new row from the body of the request
-        var requestBody = new StreamReader(req.Body).ReadToEnd();
+        var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
 
         var calendarEvent = JsonConvert.DeserializeObject<CalendarEvent>(requestBody);
 
