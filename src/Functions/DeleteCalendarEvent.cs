@@ -2,25 +2,17 @@ using System.Net;
 using System.Web;
 using CalendarSync.Data;
 using CalendarSync.Helpers;
-using CalendarSync.Services.GoogleCloudConsole;
+using CalendarSync.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using static CalendarSync.Helpers.Helpers;
+using static CalendarSync.Utils.Constants;
 
 namespace CalendarSync.Functions;
 
-public class DeleteCalendarEvent
+public class DeleteCalendarEvent(ILoggerFactory loggerFactory, AppDbContext context, GoogleCalendarService googleCalendarService, KeyVaultService keyVaultService)
 {
-    private readonly ILogger _logger;
-
-    public DeleteCalendarEvent(ILoggerFactory loggerFactory)
-    {
-        _logger = loggerFactory.CreateLogger<DeleteCalendarEvent>();
-    }
-
-    public AppSettings? MyAppSettings { get; set; }
-    public GoogleCalendarService? GoogleCalendarService { get; private set; }
+    private readonly ILogger _logger = loggerFactory.CreateLogger<DeleteCalendarEvent>();
 
 
     [Function("DeleteCalendarEvent")]
@@ -44,31 +36,8 @@ public class DeleteCalendarEvent
             return response;
         }
 
-        // Get app settings
-        MyAppSettings = GetAppSettings();
-
-        // confirm that the app settings were retrieved
-        if (MyAppSettings is null
-            || string.IsNullOrEmpty(MyAppSettings.ConnectionString)
-            || string.IsNullOrEmpty(MyAppSettings.KeyVaultUri)
-            || string.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName)
-            || string.IsNullOrEmpty(MyAppSettings.CalendarId))
-        {
-            // get response from helper method
-            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.InternalServerError,
-                "App settings were not retrieved");
-
-            return response;
-        }
-
-        // Authenticate to Google Cloud Console and get an access token for Google Calendar
-        GoogleCalendarService = new GoogleCalendarService();
-        var googleCalendarService =
-            await GoogleCalendarService.AuthenticateGoogleCloudAsync(MyAppSettings.KeyVaultUri,
-                MyAppSettings.KeyVaultSecretName);
-
         // Check if the token was acquired successfully
-        if (googleCalendarService is null)
+        if (googleCalendarService.CalendarService is null)
         {
             // get response from helper method
             response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,
@@ -79,7 +48,6 @@ public class DeleteCalendarEvent
 
 
         // get the calendar event from the database
-        var context = new AppDbContext();
         var calendarEvent = context.CalendarEvents?.FirstOrDefault(e => e.WorkAccEventId == workAccEventId);
 
         // check if the calendar event was found
@@ -90,13 +58,16 @@ public class DeleteCalendarEvent
 
             return response;
         }
+        
+        // get the calendar id from the key vault
+        var calendarId = await keyVaultService.GetSecretAsync(GOOGLE_CALENDAR_ID_SECRET_NAME);
 
         // delete the calendar event from google calendar
-        await GoogleCalendarService.DeleteEvent(calendarEvent.PersonalAccEventId, MyAppSettings.CalendarId);
+        await googleCalendarService.DeleteEvent(calendarEvent.PersonalAccEventId, calendarId);
 
         // delete the calendar event from the database
         context.CalendarEvents?.Remove(calendarEvent);
-        context.SaveChanges();
+        await context.SaveChangesAsync();
 
 
         response =await req.CreateFunctionReturnResponseAsync(HttpStatusCode.OK, "Event deleted", true);

@@ -3,7 +3,7 @@ using CalendarSync.Models;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
 
-namespace CalendarSync.Service.AzureAD;
+namespace CalendarSync.Services;
 
 public class OutlookCalendarService
 {

@@ -46,6 +46,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
+    <None Remove="Scripts\vault-save-key-file.sh" />
   </ItemGroup>
 
   <ItemGroup>

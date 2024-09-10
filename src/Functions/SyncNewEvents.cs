@@ -3,29 +3,20 @@ using System.Web;
 using CalendarSync.Data;
 using CalendarSync.Helpers;
 using CalendarSync.Models;
-using CalendarSync.Services.GoogleCloudConsole;
+using CalendarSync.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using static CalendarSync.Helpers.Helpers;
+using static CalendarSync.Utils.Constants;
 
 namespace CalendarSync.Functions;
 
-public class SyncNewEvents
+public class SyncNewEvents(ILoggerFactory loggerFactory, AppDbContext context, GoogleCalendarService googleCalendarService, KeyVaultService keyVaultService)
 {
-    private readonly ILogger _logger;
+    private readonly ILogger _logger = loggerFactory.CreateLogger<SyncNewEvents>();
     private List<CalendarEvent>? calendarEvents;
-
-    public SyncNewEvents(ILoggerFactory loggerFactory)
-    {
-        _logger = loggerFactory.CreateLogger<SyncNewEvents>();
-    }
-
-    public GoogleCalendarService? GoogleCalendarService { get; set; }
-
-    public AppSettings? MyAppSettings { get; set; }
 
     [Function("SyncNewEvents")]
     public async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
@@ -83,32 +74,9 @@ public class SyncNewEvents
 
             return response;
         }
-
-
-        // Get app settings
-        MyAppSettings = GetAppSettings();
-
-        // confirm that the app settings were retrieved
-        if (MyAppSettings is null
-            || string.IsNullOrEmpty(MyAppSettings.ConnectionString)
-            || string.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName)
-            || string.IsNullOrEmpty(MyAppSettings.KeyVaultUri)
-            || string.IsNullOrEmpty(MyAppSettings.CalendarId))
-        {
-            // get response from helper method
-            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest, "App settings are missing");
-
-            return response;
-        }
-
-        // Authenticate to Google Cloud Console and get an access token for Google Calendar
-        GoogleCalendarService = new GoogleCalendarService();
-        var googleCalendarService =
-            await GoogleCalendarService.AuthenticateGoogleCloudAsync(MyAppSettings.KeyVaultUri,
-                MyAppSettings.KeyVaultSecretName);
-
+        
         // Check if the token was acquired successfully
-        if (googleCalendarService is null)
+        if (googleCalendarService.CalendarService is null)
         {
             // get response from helper method
             response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,
@@ -117,12 +85,7 @@ public class SyncNewEvents
             return response;
         }
 
-        // Use EF Core to insert a record into the table & Apply any pending migration
-        var context = new AppDbContext();
-
-        context.Database.Migrate();
-        context.Database.EnsureCreated();
-
+        // Use EF Core to insert a record into the table 
         var cEvents = new List<object>();
 
         foreach (var calendarEvent in calendarEvents)
@@ -137,18 +100,22 @@ public class SyncNewEvents
                 });
                 continue;
             }
-
-            context?.CalendarEvents?.Add(calendarEvent);
-            context?.SaveChanges();
+            
+            await context.CalendarEvents.AddAsync(calendarEvent);
+            await context.SaveChangesAsync();
 
             // do no add viva generated appointments 
-            if(calendarEvent.Subject.Contains("Take a break") || calendarEvent.Subject.Contains("Catch up on messages"))
+            if (calendarEvent.Subject.Contains("Take a break") ||
+                calendarEvent.Subject.Contains("Catch up on messages"))
                 continue;
 
             calendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "#focustime" : "#meeting";
 
+            // get calendar id from key vault
+            var calendarId = await keyVaultService.GetSecretAsync(GOOGLE_CALENDAR_ID_SECRET_NAME);
+
             // create event in user's calendar
-            var newEvent = await GoogleCalendarService.CreateNewEventAsync(calendarEvent, MyAppSettings.CalendarId);
+            var newEvent = await googleCalendarService.CreateNewEventAsync(calendarEvent, calendarId);
 
             // check if event was created successfully
             if (newEvent is null)

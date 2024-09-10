@@ -1,0 +1,282 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.29.47.4906",
+      "templateHash": "8045038994452067665"
+    }
+  },
+  "parameters": {
+    "GoogleCalendarId": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "location": "[resourceGroup().location]",
+    "keyVaultName": "[format('kv-calendar-sync-{0}', variables('location'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[format('stcalendarsync{0}', variables('location'))]",
+      "location": "[variables('location')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[format('asp-calendar-sync-{0}', variables('location'))]",
+      "location": "[variables('location')]",
+      "kind": "functionapp",
+      "sku": {
+        "name": "Y1"
+      },
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[format('func-calendar-sync-{0}', variables('location'))]",
+      "location": "[variables('location')]",
+      "kind": "functionapp",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('asp-calendar-sync-{0}', variables('location')))]",
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('stcalendarsync{0}', variables('location')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('stcalendarsync{0}', variables('location'))), '2023-05-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('stcalendarsync{0}', variables('location')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('stcalendarsync{0}', variables('location'))), '2023-05-01').keys[0].value)]"
+            },
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "dotnet-isolated"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~4"
+            },
+            {
+              "name": "KeyVaultName",
+              "value": "[variables('keyVaultName')]"
+            }
+          ]
+        },
+        "httpsOnly": true
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', format('asp-calendar-sync-{0}', variables('location')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', format('stcalendarsync{0}', variables('location')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2024-04-01-preview",
+      "name": "[variables('keyVaultName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "accessPolicies": [
+          {
+            "tenantId": "[subscription().tenantId]",
+            "objectId": "[reference(resourceId('Microsoft.Web/sites', format('func-calendar-sync-{0}', variables('location'))), '2023-12-01', 'full').identity.principalId]",
+            "permissions": {
+              "secrets": [
+                "list",
+                "get"
+              ],
+              "certificates": [
+                "list",
+                "get"
+              ],
+              "keys": [
+                "list",
+                "get"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('func-calendar-sync-{0}', variables('location')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2024-04-01-preview",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'GoogleCalendarId')]",
+      "properties": {
+        "value": "[parameters('GoogleCalendarId')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2024-04-01-preview",
+      "name": "[format('{0}/{1}', variables('keyVaultName'), 'SqlDbConnString')]",
+      "properties": {
+        "value": "[reference(resourceId('Microsoft.Resources/deployments', 'azureSql'), '2022-09-01').outputs.sqlDbConnString.value]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'azureSql')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "azureSql",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[variables('location')]"
+          },
+          "adminLogin": {
+            "value": "[format('func-calendar-sync-{0}', variables('location'))]"
+          },
+          "adminSid": {
+            "value": "[reference(resourceId('Microsoft.Web/sites', format('func-calendar-sync-{0}', variables('location'))), '2023-12-01', 'full').identity.principalId]"
+          },
+          "principalType": {
+            "value": "Application"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.29.47.4906",
+              "templateHash": "12701697844307611369"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "adminLogin": {
+              "type": "string"
+            },
+            "adminSid": {
+              "type": "string"
+            },
+            "principalType": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "serverName": "[format('sql-calendar-sync-{0}', parameters('location'))]",
+            "dbName": "[format('sqldb-calendar-sync-{0}', parameters('location'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Sql/servers",
+              "apiVersion": "2023-08-01-preview",
+              "name": "[variables('serverName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "version": "12.0",
+                "minimalTlsVersion": "1.2",
+                "publicNetworkAccess": "Enabled",
+                "restrictOutboundNetworkAccess": "Disabled",
+                "administrators": {
+                  "administratorType": "ActiveDirectory",
+                  "principalType": "[parameters('principalType')]",
+                  "login": "[parameters('adminLogin')]",
+                  "sid": "[parameters('adminSid')]",
+                  "tenantId": "[subscription().tenantId]",
+                  "azureADOnlyAuthentication": true
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Sql/servers/firewallRules",
+              "apiVersion": "2023-08-01-preview",
+              "name": "[format('{0}/{1}', variables('serverName'), 'AllowAllWindowsAzureIps')]",
+              "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', variables('serverName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Sql/servers/databases",
+              "apiVersion": "2023-08-01-preview",
+              "name": "[format('{0}/{1}', variables('serverName'), variables('dbName'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Basic",
+                "tier": "Basic",
+                "capacity": 5
+              },
+              "properties": {
+                "collation": "SQL_Latin1_General_CP1_CI_AS",
+                "maxSizeBytes": 2147483648,
+                "catalogCollation": "SQL_Latin1_General_CP1_CI_AS",
+                "zoneRedundant": false,
+                "readScale": "Disabled",
+                "requestedBackupStorageRedundancy": "Zone",
+                "isLedgerOn": false,
+                "availabilityZone": "NoPreference"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', variables('serverName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "sqlDbConnString": {
+              "type": "string",
+              "value": "[format('Server=tcp:{0}.database.windows.net,1433;Initial Catalog={1};Authentication=Active Directory Default; Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', variables('serverName'), variables('dbName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('func-calendar-sync-{0}', variables('location')))]"
+      ]
+    }
+  ]
+}

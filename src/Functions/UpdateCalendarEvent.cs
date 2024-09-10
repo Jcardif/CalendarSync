@@ -3,27 +3,20 @@ using System.Web;
 using CalendarSync.Data;
 using CalendarSync.Helpers;
 using CalendarSync.Models;
-using CalendarSync.Services.GoogleCloudConsole;
+using CalendarSync.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using static CalendarSync.Helpers.Helpers;
+using static CalendarSync.Utils.Constants;
 
 namespace CalendarSync.Functions;
 
-public class UpdateCalendarEvent
+public class UpdateCalendarEvent(ILoggerFactory loggerFactory, AppDbContext context, KeyVaultService keyVaultService, GoogleCalendarService googleCalendarService)
 {
-    private readonly ILogger _logger;
+    private readonly ILogger _logger = loggerFactory.CreateLogger<UpdateCalendarEvent>();
 
-    public UpdateCalendarEvent(ILoggerFactory loggerFactory)
-    {
-        _logger = loggerFactory.CreateLogger<UpdateCalendarEvent>();
-    }
-
-    public GoogleCalendarService? GoogleCalendarService { get; private set; }
-
-    public AppSettings? MyAppSettings { get; private set; }
+    private GoogleCalendarService? GoogleCalendarService { get; set; }
 
     [Function("UpdateCalendarEvent")]
     public async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
@@ -52,29 +45,8 @@ public class UpdateCalendarEvent
             return response;
         }
 
-        // Get app settings
-        MyAppSettings = GetAppSettings();
-
-        // confirm that the app settings were retrieved
-        if (MyAppSettings is null || string.IsNullOrEmpty(MyAppSettings.ConnectionString) ||
-            string.IsNullOrEmpty(MyAppSettings.KeyVaultUri) || string.IsNullOrEmpty(MyAppSettings.KeyVaultSecretName) ||
-            string.IsNullOrEmpty(MyAppSettings.CalendarId))
-        {
-            // get response from helper method
-            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.InternalServerError,
-                "App settings were not retrieved");
-
-            return response;
-        }
-
-        // Authenticate to Google Cloud Console and get an access token for Google Calendar
-        GoogleCalendarService = new GoogleCalendarService();
-        var googleCalendarService =
-            await GoogleCalendarService.AuthenticateGoogleCloudAsync(MyAppSettings.KeyVaultUri,
-                MyAppSettings.KeyVaultSecretName);
-
         // Check if the token was acquired successfully
-        if (googleCalendarService is null)
+        if (googleCalendarService.CalendarService is null)
         {
             // get response from helper method
             response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,
@@ -84,8 +56,7 @@ public class UpdateCalendarEvent
         }
 
         // get the calendar event from the database
-        var context = new AppDbContext();
-        var existingCalendarEvent = context?.CalendarEvents?.FirstOrDefault(e => e.WorkAccEventId == workAccEventId);
+        var existingCalendarEvent = context.CalendarEvents?.FirstOrDefault(e => e.WorkAccEventId == workAccEventId);
 
         // check if the calendar event was found
         if (existingCalendarEvent is null || existingCalendarEvent.PersonalAccEventId == null)
@@ -104,12 +75,15 @@ public class UpdateCalendarEvent
         existingCalendarEvent.Importance = calendarEvent.Importance;
         existingCalendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "#focustime" : "#meeting";
 
-        context?.CalendarEvents?.Update(existingCalendarEvent);
-        context?.SaveChanges();
+        context.CalendarEvents?.Update(existingCalendarEvent);
+        await context.SaveChangesAsync();
+        
+        // get the calendar id from key vault
+        var calendarId = await keyVaultService.GetSecretAsync(GOOGLE_CALENDAR_ID_SECRET_NAME);
 
         // update the calendar event in Google Calendar
         var updatedCalendarEvent =
-            await GoogleCalendarService.UpdateEventAsync(existingCalendarEvent, MyAppSettings.CalendarId);
+            await GoogleCalendarService.UpdateEventAsync(existingCalendarEvent, calendarId);
 
         // check if the calendar event was updated successfully
         if (updatedCalendarEvent is null)

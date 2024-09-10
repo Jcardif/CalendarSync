@@ -3,17 +3,16 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.Services.AppAuthentication;
 
-namespace CalendarSync.Services.GoogleCloudConsole;
+namespace CalendarSync.Services;
 
 public class GoogleCalendarService
 {
     // Calendar service property
-    private CalendarService? CalendarService { get; set; }
+    public CalendarService? CalendarService { get; private set; }
 
-    public GoogleCalendarService(string privateKeyFile)
+
+    public CalendarService? AuthenticateAsync(string privateKeyFile)
     {
         // Use the Google .NET Client Library to make the API request
         string[] scopes = { CalendarService.Scope.Calendar };
@@ -30,7 +29,7 @@ public class GoogleCalendarService
         });
 
         // if the credential is null, the authentication failed
-        CalendarService = credential is null ? null : CalendarService;
+        return credential is null ? null : CalendarService;
     }
 
     // Add a new event to the user's calendar
