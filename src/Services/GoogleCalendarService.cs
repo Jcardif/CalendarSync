@@ -11,32 +11,10 @@ namespace CalendarSync.Services.GoogleCloudConsole;
 public class GoogleCalendarService
 {
     // Calendar service property
-    public CalendarService? CalendarService { get; set; }
+    private CalendarService? CalendarService { get; set; }
 
-    // Get the private key file from azure vault
-    private async Task<string> GetPrivateKeyFileAsync(string keyVaultUrl, string secretName)
+    public GoogleCalendarService(string privateKeyFile)
     {
-        // Authenticate the request using a service principal or a managed identity
-        var azureServiceTokenProvider = new AzureServiceTokenProvider();
-        var accessToken = await azureServiceTokenProvider.GetAccessTokenAsync("https://vault.azure.net");
-
-        // Create the Key Vault client
-        var keyVaultClient = new KeyVaultClient(
-            (authority, resource, scope) =>
-                azureServiceTokenProvider.KeyVaultTokenCallback(authority, resource, scope));
-
-        // Get the secret value
-        var secret = await keyVaultClient.GetSecretAsync(keyVaultUrl, secretName);
-
-        return secret.Value;
-    }
-
-    // Authenticate to Google Cloud and get an access token for Google Calendar
-    public async Task<CalendarService?> AuthenticateGoogleCloudAsync(string keyVaultUrl, string secretName)
-    {
-        // Get the private key file from azure vault
-        var privateKeyFile = await GetPrivateKeyFileAsync(keyVaultUrl, secretName);
-
         // Use the Google .NET Client Library to make the API request
         string[] scopes = { CalendarService.Scope.Calendar };
 
@@ -52,7 +30,7 @@ public class GoogleCalendarService
         });
 
         // if the credential is null, the authentication failed
-        return credential is null ? null : CalendarService;
+        CalendarService = credential is null ? null : CalendarService;
     }
 
     // Add a new event to the user's calendar
