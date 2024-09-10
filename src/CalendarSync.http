@@ -1,0 +1,27 @@
+### Sync new calendar events
+POST http://localhost:7034/api/SyncNewEvents?BodyType=list
+Content-Type: application/json
+
+[
+    {
+    "WorkAccEventId": "work-event-123",
+    "StartTime": "2023-10-01T09:00:00",
+    "StartTimeWithTimeZone": "2023-10-01T09:00:00+00:00",
+    "EndTime": "2023-10-01T10:00:00",
+    "EndTimeWithTimeZone": "2023-10-01T10:00:00+00:00",
+    "Subject": "Team Meeting",
+    "Importance": "High",
+    "Start": "2023-10-01T09:00:00",
+    "End": "2023-10-01T10:00:00",
+    "StartWithTimeZone": "2023-10-01T09:00:00+00:00",
+    "EndWithTimeZone": "2023-10-01T10:00:00+00:00",
+    "Body": "Discuss project updates"
+    }
+]
+
+
+
+### Delete calendar event
+POST http://localhost:7034/api/DeleteCalendarEvent?workAccEventId=work-event-123
+Content-Type: application/json
+

@@ -15,7 +15,7 @@ public class GoogleCalendarService
     public CalendarService? AuthenticateAsync(string privateKeyFile)
     {
         // Use the Google .NET Client Library to make the API request
-        string[] scopes = { CalendarService.Scope.Calendar };
+        string[] scopes = [CalendarService.Scope.Calendar];
 
         var credential = GoogleCredential.FromJson(privateKeyFile)
             .CreateScoped(scopes);
