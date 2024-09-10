@@ -44,9 +44,13 @@ public class UpdateCalendarEvent(ILoggerFactory loggerFactory, AppDbContext cont
 
             return response;
         }
+        
+        // Authenticate to Google Cloud Console
+        var privateKeyFile = await keyVaultService.GetSecretAsync(GOOGLE_CALENDAR_PRIVATE_KEY_SECRET_NAME);
+        var calendarService = googleCalendarService.AuthenticateAsync(privateKeyFile);
 
         // Check if the token was acquired successfully
-        if (googleCalendarService.CalendarService is null)
+        if (calendarService is null)
         {
             // get response from helper method
             response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,

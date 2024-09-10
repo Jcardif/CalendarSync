@@ -16,7 +16,7 @@ namespace CalendarSync.Functions;
 public class SyncNewEvents(ILoggerFactory loggerFactory, AppDbContext context, GoogleCalendarService googleCalendarService, KeyVaultService keyVaultService)
 {
     private readonly ILogger _logger = loggerFactory.CreateLogger<SyncNewEvents>();
-    private List<CalendarEvent>? calendarEvents;
+    private List<CalendarEvent>? _calendarEvents;
 
     [Function("SyncNewEvents")]
     public async Task<HttpResponseData> RunAsync([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
@@ -37,10 +37,10 @@ public class SyncNewEvents(ILoggerFactory loggerFactory, AppDbContext context, G
         {
             if (bodyType == "list")
             {
-                calendarEvents = JsonConvert.DeserializeObject<List<CalendarEvent>>(requestBody);
+                _calendarEvents = JsonConvert.DeserializeObject<List<CalendarEvent>>(requestBody);
 
                 // check if list is null or empty
-                if (calendarEvents is null || calendarEvents.Count == 0)
+                if (_calendarEvents is null || _calendarEvents.Count == 0)
                 {
                     // get response from helper method
                     response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.BadRequest, "No events were passed");
@@ -62,7 +62,7 @@ public class SyncNewEvents(ILoggerFactory loggerFactory, AppDbContext context, G
                     return response;
                 }
 
-                calendarEvents = new List<CalendarEvent> { calendarEvent };
+                _calendarEvents = new List<CalendarEvent> { calendarEvent };
             }
         }
 
@@ -75,8 +75,12 @@ public class SyncNewEvents(ILoggerFactory loggerFactory, AppDbContext context, G
             return response;
         }
         
+        // Authenticate to Google Cloud Console
+        var privateKeyFile = await keyVaultService.GetSecretAsync(GOOGLE_CALENDAR_PRIVATE_KEY_SECRET_NAME);
+        var calendarService = googleCalendarService.AuthenticateAsync(privateKeyFile);
+        
         // Check if the token was acquired successfully
-        if (googleCalendarService.CalendarService is null)
+        if (calendarService is null)
         {
             // get response from helper method
             response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Unauthorized,
@@ -88,7 +92,7 @@ public class SyncNewEvents(ILoggerFactory loggerFactory, AppDbContext context, G
         // Use EF Core to insert a record into the table 
         var cEvents = new List<object>();
 
-        foreach (var calendarEvent in calendarEvents)
+        foreach (var calendarEvent in _calendarEvents)
         {
             var existingCalendarEvent = context?.CalendarEvents?.Find(calendarEvent.Id);
             if (existingCalendarEvent != null)
