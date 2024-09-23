@@ -58,6 +58,9 @@ public class UpdateCalendarEvent(ILoggerFactory loggerFactory, AppDbContext cont
 
             return response;
         }
+        
+        // get the calendar id from key vault
+        var calendarId = await keyVaultService.GetSecretAsync(GOOGLE_CALENDAR_ID_SECRET_NAME);
 
         // get the calendar event from the database
         var existingCalendarEvent = context.CalendarEvents?.FirstOrDefault(e => e.WorkAccEventId == workAccEventId);
@@ -65,9 +68,30 @@ public class UpdateCalendarEvent(ILoggerFactory loggerFactory, AppDbContext cont
         // check if the calendar event was found
         if (existingCalendarEvent is null || existingCalendarEvent.PersonalAccEventId == null)
         {
-            // get response from helper method
-            response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.NotFound, "Event not found", workAccEventId);
-            return response;
+            // add event to database
+            var calEvent=await context.CalendarEvents.AddAsync(calendarEvent);
+            await context.SaveChangesAsync();
+            
+            // add event to Google Calendar
+            if (calendarEvent.Subject.Contains("Take a break") ||
+                calendarEvent.Subject.Contains("Catch up on messages")) ;
+            
+            calendarEvent.Body = calendarEvent.Subject.Contains("Focus time") ? "#focustime" : "#meeting";
+            
+            var newEvent = await googleCalendarService.CreateNewEventAsync(calendarEvent, calendarId);
+
+            if (newEvent == null)
+            {
+                response = await req.CreateFunctionReturnResponseAsync(HttpStatusCode.InternalServerError,
+                    "Calendar Event was not created in Google Calendar");
+            }
+            
+            // update database with Google calendar event id
+            if (newEvent != null) calEvent.Entity.PersonalAccEventId = newEvent.Id;
+            await context.SaveChangesAsync();
+
+            return await req.CreateFunctionReturnResponseAsync(HttpStatusCode.Created,
+                "Calendar event created successfully");
         }
 
         // update the calendar in the database
@@ -81,9 +105,6 @@ public class UpdateCalendarEvent(ILoggerFactory loggerFactory, AppDbContext cont
 
         context.CalendarEvents?.Update(existingCalendarEvent);
         await context.SaveChangesAsync();
-        
-        // get the calendar id from key vault
-        var calendarId = await keyVaultService.GetSecretAsync(GOOGLE_CALENDAR_ID_SECRET_NAME);
 
         // update the calendar event in Google Calendar
         var updatedCalendarEvent =

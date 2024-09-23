@@ -138,7 +138,7 @@ public class SyncNewEvents(ILoggerFactory loggerFactory, AppDbContext context, G
             if (existingCalendarEvent != null)
             {
                 existingCalendarEvent.PersonalAccEventId = newEvent.Id;
-                context?.SaveChanges();
+                await context.SaveChangesAsync();
             }
 
             cEvents.Add(new

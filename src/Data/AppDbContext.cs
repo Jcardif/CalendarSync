@@ -14,6 +14,6 @@ public class AppDbContext : DbContext
     {
     }
 
-    public DbSet<CalendarEvent>? CalendarEvents { get; set; }
+    public DbSet<CalendarEvent> CalendarEvents { get; set; }
     
 }
